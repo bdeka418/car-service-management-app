@@ -16,23 +16,38 @@ const firebaseConfig = {
     storageBucket: "car-service-app-c369c.firebasestorage.app",
     messagingSenderId: "88111807766",
     appId: "1:88111807766:web:0ccaf8189abf18d336e437",
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-//role
+  };
+  
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  //car DOMS
+  const addCarBtn = document.getElementById("addCarBtn");
+  const carNumber = document.getElementById("carNumber");
+  const brand = document.getElementById("brand");
+  const model = document.getElementById("model");
+  const colour = document.getElementById("colour");
+  //Service DOMS
+  const carSelect = document.getElementById("carSelect");
+  const serviceNotes = document.getElementById("serviceNotes");
+  const serviceList = document.getElementById("serviceList");
+  const createServiceBtn = document.getElementById("createServiceBtn");
+  //role
 let currentRole = null;
 let currentUser = null;
 
 // 🔐 Auth check
 onAuthStateChanged(auth, async (user) => {
+
   if (!user) {
     window.location.href = "index.html";
   }
   else {
     currentUser = user;
+    //the button are enbale once the user is logged in
+
+    addCarBtn.disabled = false;
+    createServiceBtn.disabled = false;
 
     const userSnap = await getDoc(doc(db, "users", user.uid));
     currentRole = userSnap.data().role;
@@ -51,50 +66,68 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
 
 //the car logic
 
-const addCarBtn = document.getElementById("addCarBtn");
-const carNumber = document.getElementById("carNumber");
-const brand = document.getElementById("brand");
-const model = document.getElementById("model");
-const colour = document.getElementById("colour");
+
 
 addCarBtn.addEventListener("click", async () => {
-   if (
-    !carNumber.value ||
-    !brand.value ||
-    !model.value ||
-    !colour.value
+  if (
+    !carNumber.value.trim() ||
+    !brand.value.trim() ||
+    !model.value.trim() ||
+    !colour.value.trim()
   ) {
     alert("Fill all car details");
     return;
   }
+  //disable button the user is known or logged in
+  addCarBtn.disabled = true;
+createServiceBtn.disabled = true;
+
   try {
     await addDoc(collection(db, "cars"), {
       ownerId: currentUser.uid,
-      carNumber: carNumber.value,
-      brand: brand.value,
-      model: model.value,
-      colour: colour.value,
+      carNumber: carNumber.value.trim(),
+      brand: brand.value.trim(),
+      model: model.value.trim(),
+      colour: colour.value.trim(),
       createdAt: serverTimestamp()
     });
 
-    alert("Car added successfully");
+    carNumber.value = "";
+    brand.value = "";
+    model.value = "";
+    colour.value = "";
+
     loadCarOptions();
+    alert("Car added successfully");
+
   } catch (e) {
     console.error(e);
     alert("Failed to add car");
-  }
+   } finally {
+    addCarBtn.disabled = false;
+    createServiceBtn.disabled = false;
+   }
 });
 
 
-const carSelect = document.getElementById("carSelect");
-const serviceList = document.getElementById("serviceList");
-const createServiceBtn = document.getElementById("createServiceBtn");
 
 // populate car dropdown
 async function loadCarOptions() {
   carSelect.innerHTML = "";
+
   const q = query(collection(db, "cars"), where("ownerId", "==", currentUser.uid));
+
   const snap = await getDocs(q);
+
+  //  No car -> block service creation
+  if (snap.empty) {
+    createServiceBtn.disabled = true;
+    return;
+  }
+
+  // Cars exist -> allow service creation
+  createServiceBtn.disabled = false;
+  
   snap.forEach(d => {
     const opt = document.createElement("option");
     opt.value = d.id;
@@ -102,9 +135,18 @@ async function loadCarOptions() {
     carSelect.appendChild(opt);
   });
 }
-
+//verfying and blocking if or car is not selected or no note added for the service created
 // create service
 createServiceBtn.addEventListener("click", async () => {
+  if (!carSelect.value) {
+    alert("Please register a car before creating a service");
+    return;
+  }
+
+  if (!serviceNotes.value.trim()) {
+    alert("Please add service notes");
+    return;
+  }
   try {
     await addDoc(collection(db, "services"), {
       ownerId: currentUser.uid,
