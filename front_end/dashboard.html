@@ -6,8 +6,35 @@
     <title>Dashboard</title>
 </head>
 <body>
-    <h2>Dashboard</h2>
-  <button id="logoutBtn">Logout</button>
+  <h2>Dashboard</h2>
+  
+  <!-- add car -->
+
+  <!-- ADD CAR -->
+<h3>Add Car</h3>
+
+<input type="text" id="carNumber" placeholder="Car Number"><br><br>
+<input type="text" id="brand" placeholder="Brand"><br><br>
+<input type="text" id="model" placeholder="Model"><br><br>
+<input type="text" id="colour" placeholder="Colour"><br><br>
+
+<button id="addCarBtn">Add Car</button>
+
+<hr>
+
+  <!-- services -->
+  <h3>Create Service</h3>
+  
+  <select id="carSelect"></select><br><br>
+  <textarea id="serviceNotes" placeholder="Service notes"></textarea><br><br>
+  <button id="createServiceBtn">Create Service</button>
+  
+<button id="logoutBtn">Logout</button>
+  
+  <hr>
+  
+  <h3>My Services</h3>
+  <ul id="serviceList"></ul>
 
   <script type="module" src="dashboard.js"></script>
 </body>
