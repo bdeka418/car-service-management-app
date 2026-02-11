@@ -22,7 +22,7 @@ console.log("Firebase initialized");
 import { createUserWithEmailAndPassword }
     from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 
-import { doc, setDoc, serverTimestamp }
+import { doc, getDoc,setDoc, serverTimestamp }
     from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 const signupBtn = document.getElementById("signupBtn");
@@ -87,10 +87,24 @@ loginBtn.addEventListener("click", async () => {
   const password = document.getElementById("loginPassword").value;
 //alerts
   try {
-  await signInWithEmailAndPassword(auth, email, password);
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  const user = userCredential.user;
   alert("Login successful");
-  window.location.href = "dashboard.html"; //redirects to the dashboard
-} catch (error) {
+
+//redirects to the dashboard based on ROLE:
+
+  const userSnap = await getDoc(doc(db, "users", user.uid));
+const role = userSnap.data().role;
+
+if (role === "service_center") {
+  window.location.href = "service-dashboard.html";
+} else {
+  window.location.href = "dashboard.html";
+}
+}
+
+
+catch (error) {
   let message = "Something went wrong. Please try again.";
 
   if (error.code === "auth/user-not-found" ||  error.code === "auth/invalid-credential") {

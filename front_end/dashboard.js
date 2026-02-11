@@ -32,6 +32,8 @@ const firebaseConfig = {
   const serviceNotes = document.getElementById("serviceNotes");
   const serviceList = document.getElementById("serviceList");
   const createServiceBtn = document.getElementById("createServiceBtn");
+  const historyList = document.getElementById("historyList");
+
   //role
 let currentRole = null;
 let currentUser = null;
@@ -44,15 +46,24 @@ onAuthStateChanged(auth, async (user) => {
   }
   else {
     currentUser = user;
-    //the button are enbale once the user is logged in
-
-    addCarBtn.disabled = false;
-    createServiceBtn.disabled = false;
 
     const userSnap = await getDoc(doc(db, "users", user.uid));
     currentRole = userSnap.data().role;
 
+    //role guard
+ if (currentRole !== "customer") {
+    alert("Access denied");
+    window.location.href = "index.html";
+    return;
+  }
+
+    
+    //the button are enbale once the user is logged in*(UI)
+    addCarBtn.disabled = false;
+    createServiceBtn.disabled = false;
+
 loadCarOptions();
+
 loadServices();
     }
 });
@@ -232,20 +243,23 @@ createServiceBtn.addEventListener("click", async () => {
       ? `${carSnap.data().carNumber} - ${carSnap.data().brand}`
       : "Unknown car";
 
+      const statusText =
+      data.serviceStatus === "completed"
+        ? "COMPLETED"
+        : "IN PROGRESS (Service center pending)";
+
     li.innerHTML = `
-      ${carText} | ${data.serviceStatus}
-      ${
-        data.serviceStatus !== "completed" && currentRole === "service_center"
-          ? `<button data-id="${d.id}">Complete</button>`
-          : ""
-      }
-    `;
+      ${carText} | ${data.serviceStatus}   `;
+      // ${
+      //   data.serviceStatus !== "completed" && currentRole === "service_center"
+      //     ? `<button data-id="${d.id}">Complete</button>`
+      //     : ""
+      // }
+ 
 
     serviceList.appendChild(li);
   }
 }
-
-
 
 // complete service
 serviceList.addEventListener("click", async (e) => {
@@ -258,3 +272,60 @@ serviceList.addEventListener("click", async (e) => {
     loadServices();
   }
 });
+
+//service history list
+
+async function loadServiceHistory(carId) {
+  historyList.innerHTML = "";
+
+  const q = query(
+    collection(db, "services"),
+    where("ownerId", "==", currentUser.uid),
+    where("carId", "==", carId)
+  );
+
+  const snap = await getDocs(q);
+
+  if (snap.empty) {
+    historyList.innerHTML = "<li>No service history</li>";
+    return;
+  }
+
+  const services = snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.startedAt?.seconds || 0) - (a.startedAt?.seconds || 0));
+
+  services.forEach(s => {
+    const li = document.createElement("li");
+    const statusLabel =
+  s.serviceStatus === "completed"
+    ? "COMPLETED"
+    : "IN PROGRESS (Awaiting service center)";
+
+const startedText = s.startedAt
+  ? new Date(s.startedAt.seconds * 1000).toLocaleString("en-GB")
+  : "-";
+
+const completedText =
+  s.serviceStatus === "completed" && s.completedAt
+    ? ` | Completed: ${new Date(s.completedAt.seconds * 1000).toLocaleString("en-GB")}`
+    : "";
+
+li.innerHTML = `
+  <strong>${statusLabel}</strong>
+  | Started: ${startedText}
+  ${completedText}
+`;
+
+    historyList.appendChild(li);
+  });
+}
+
+//trigger on click show service history
+
+carSelect.addEventListener("change", () => {
+  if (carSelect.value) {
+    loadServiceHistory(carSelect.value);
+  }
+});
+
