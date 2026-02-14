@@ -21,6 +21,9 @@ const firebaseConfig = {
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+
+  //welcome note
+  const welcomeText = document.getElementById("welcomeText");
   //car DOMS
   const addCarBtn = document.getElementById("addCarBtn");
   const carNumber = document.getElementById("carNumber");
@@ -49,6 +52,8 @@ onAuthStateChanged(auth, async (user) => {
 
     const userSnap = await getDoc(doc(db, "users", user.uid));
     currentRole = userSnap.data().role;
+    const userData = userSnap.data();
+    welcomeText.innerText = `Welcome, ${userData.name}`;
 
     //role guard
  if (currentRole !== "customer") {
@@ -208,6 +213,7 @@ createServiceBtn.addEventListener("click", async () => {
       carId: carSelect.value,
       notes: serviceNotes.value,
       serviceStatus: "in_progress",
+      assignedServiceCenterId: null, // NOT assigned yet
       startedAt: serverTimestamp()
     });
     alert("Service created");
@@ -249,12 +255,11 @@ createServiceBtn.addEventListener("click", async () => {
         : "IN PROGRESS (Service center pending)";
 
     li.innerHTML = `
-      ${carText} | ${data.serviceStatus}   `;
-      // ${
-      //   data.serviceStatus !== "completed" && currentRole === "service_center"
-      //     ? `<button data-id="${d.id}">Complete</button>`
-      //     : ""
-      // }
+  <strong>${carText}</strong><br>
+  📝 Notes: ${data.notes || "—"}<br>
+  Status: ${data.serviceStatus}
+`;
+
  
 
     serviceList.appendChild(li);
@@ -303,19 +308,31 @@ async function loadServiceHistory(carId) {
     : "IN PROGRESS (Awaiting service center)";
 
 const startedText = s.startedAt
-  ? new Date(s.startedAt.seconds * 1000).toLocaleString("en-GB")
+  ? new Date(s.startedAt.seconds * 1000).toLocaleString("en-GB", {hour12: true})
   : "-";
 
 const completedText =
   s.serviceStatus === "completed" && s.completedAt
-    ? ` | Completed: ${new Date(s.completedAt.seconds * 1000).toLocaleString("en-GB")}`
+    ? ` | Completed: ${new Date(s.completedAt.seconds * 1000).toLocaleString("en-GB", {hour12: true})}`
     : "";
 
 li.innerHTML = `
-  <strong>${statusLabel}</strong>
-  | Started: ${startedText}
+  <strong>${s.serviceStatus.toUpperCase()}</strong><br>
+  📝 Notes: ${s.notes || "—"}<br>
+  Started: ${
+    s.startedAt
+      ? new Date(s.startedAt.seconds * 1000).toLocaleDateString("en-GB") 
+      : "-"
+  }
+  ${startedText}
+  ${
+    s.completedAt
+      ? `<br>Completed: ${new Date(s.completedAt.seconds * 1000).toLocaleDateString("en-GB")}`
+      : ""
+  }
   ${completedText}
 `;
+
 
     historyList.appendChild(li);
   });

@@ -22,19 +22,29 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+//welcome note
+const welcomeText = document.getElementById("welcomeText");
+
 
 const serviceList = document.getElementById("serviceList");
+const completedServiceList = document.getElementById("completedServiceList");
 
 
 //can only access by the service-center
+let currentUser = null;
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     window.location.href = "index.html";
     return;
   }
+  currentUser = user;
 
   const userSnap = await getDoc(doc(db, "users", user.uid));
-  
+
+  const userData = userSnap.data();
+  welcomeText.innerText = `Welcome, ${userData.name}`;
+
 //role protection
   if (userSnap.data().role !== "service_center") {
     alert("Access denied");
@@ -44,16 +54,19 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   loadActiveServices();
-});
+  loadCompletedServices();
 
+});
+//=======================================
 //fetching the car service details
+//=======================================
 
 async function loadActiveServices() {
   serviceList.innerHTML = "";
 
   const q = query(
     collection(db, "services"),
-    where("serviceStatus", "==", "in_progress")
+    where("serviceStatus", "in", ["in_progress", "assigned"])
   );
 
   const snap = await getDocs(q);
@@ -65,38 +78,116 @@ async function loadActiveServices() {
 
   for (const d of snap.docs) {
     const data = d.data();
+// ❌ Hide services assigned to other service centers
+if (
+  data.assignedServiceCenterId &&
+  data.assignedServiceCenterId !== currentUser.uid
+) {
+  continue;
+}
 
-    // fetch car info
     const carSnap = await getDoc(doc(db, "cars", data.carId));
     const carText = carSnap.exists()
       ? `${carSnap.data().carNumber} - ${carSnap.data().brand}`
       : data.carId;
 
+    let buttonHTML = "";
+
+    
+
+    if (!data.assignedServiceCenterId) {
+      buttonHTML = `<button data-id="${d.id}" data-action="assign">Assign to Me</button>`;
+    } 
+    else if (data.assignedServiceCenterId === currentUser.uid) {
+      buttonHTML = `<button data-id="${d.id}" data-action="complete">Mark Completed</button>`;
+    }
+//active service list
     const li = document.createElement("li");
     li.innerHTML = `
-      ${carText}
-      <button data-id="${d.id}">Mark Completed</button>
-    `;
+  <strong>${carText}</strong>
+  ${buttonHTML}<br> 
+  📝 Notes: ${data.notes || "—"}
+`;
 
     serviceList.appendChild(li);
   }
 }
 
-//logic for the completdAt burron
+//logic for the completdAt and the ASSIGN to me buttons
 
 serviceList.addEventListener("click", async (e) => {
   if (e.target.tagName !== "BUTTON") return;
 
-  const serviceId = e.target.getAttribute("data-id");
+   const serviceId = e.target.dataset.id;
+  const action = e.target.dataset.action;
 
-  await updateDoc(doc(db, "services", serviceId), {
-    serviceStatus: "completed",
-    completedAt: serverTimestamp()
+  // ASSIGN SERVICE
+  if (action === "assign") {
+    await updateDoc(doc(db, "services", serviceId), {
+      serviceStatus: "assigned",
+      assignedServiceCenterId: currentUser.uid,
+      assignedAt: serverTimestamp()
+    });
+  }
+  
+  // COMPLETE SERVICE
+  if (action === "complete") {
+    await updateDoc(doc(db, "services", serviceId), {
+      serviceStatus: "completed",
+      completedAt: serverTimestamp()
+    });
+  }
+   loadActiveServices();
+   loadCompletedServices();
+
   });
 
-  alert("Service marked as completed");
-  loadActiveServices();
-});
+  //complete service list
+
+  async function loadCompletedServices() {
+  completedServiceList.innerHTML = "";
+
+  const q = query(
+    collection(db, "services"),
+    where("serviceStatus", "==", "completed"),
+    where("assignedServiceCenterId", "==", currentUser.uid)
+  );
+
+  const snap = await getDocs(q);
+
+  if (snap.empty) {
+    completedServiceList.innerHTML = "<li>No completed services</li>";
+    return;
+  }
+
+  for (const d of snap.docs) {
+    const data = d.data();
+
+    const carSnap = await getDoc(doc(db, "cars", data.carId));
+    const carText = carSnap.exists()
+      ? `${carSnap.data().carNumber} - ${carSnap.data().brand}`
+      : data.carId;
+
+    const completedTime = data.completedAt
+      ? new Date(data.completedAt.seconds * 1000).toLocaleString("en-GB", {hour12: true})
+      : "-";
+
+    const li = document.createElement("li");
+
+const noteText = data.notes
+  ? `<br><em>Note:</em> ${data.notes}`
+  : "";
+
+li.innerHTML = `
+  <strong>${carText}</strong>
+  <br>Completed at: ${completedTime}
+  ${noteText}
+`;
+    completedServiceList.appendChild(li);
+  }
+}
+
+
 
 //logout
 
