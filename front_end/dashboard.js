@@ -36,7 +36,13 @@ const firebaseConfig = {
   const serviceList = document.getElementById("serviceList");
   const createServiceBtn = document.getElementById("createServiceBtn");
   const historyList = document.getElementById("historyList");
-
+  const carHistory = document.getElementById("carHistory");
+  //priority
+  const priorityOrder = {
+  "assigned": 1,
+  "in_progress": 2,
+  "completed": 3
+};
   //role
 let currentRole = null;
 let currentUser = null;
@@ -154,6 +160,18 @@ createServiceBtn.disabled = true;
 // populate car dropdown
 async function loadCarOptions() {
   carSelect.innerHTML = "";
+  carHistory.innerHTML = "";
+
+  // Add the "Placeholder" options first
+  const placeholder1 = new Option("Select Car", "");
+  placeholder1.disabled = true;  // Optional: makes it unselectable once changed
+  placeholder1.selected = true;  // Makes it the default visible text
+  carSelect.appendChild(placeholder1);
+
+  const placeholder2 = new Option("Select Car for History", "");
+  placeholder2.disabled = true;
+  placeholder2.selected = true;
+  carHistory.appendChild(placeholder2);
 
   const q = query(collection(db, "cars"), 
   where("ownerId", "==", currentUser.uid));
@@ -170,10 +188,17 @@ async function loadCarOptions() {
   createServiceBtn.disabled = false;
   
   snap.forEach(d => {
-    const opt = document.createElement("option");
-    opt.value = d.id;
-    opt.textContent = `${d.data().carNumber} - ${d.data().brand}`;
-    carSelect.appendChild(opt);
+    const carData = d.data();
+    const displayText = `${carData.carNumber} - ${carData.brand} (${carData.model})`;
+    const carId = d.id;
+
+    // Add to 'Create Service' dropdown
+    const opt1 = new Option(displayText, carId);
+    carSelect.appendChild(opt1);
+
+    // Add to 'View History' dropdown
+    const opt2 = new Option(displayText, carId);
+    carHistory.appendChild(opt2);
   });
 }
 //verfying and blocking if or car is not selected or no note added for the service created
@@ -239,25 +264,35 @@ createServiceBtn.addEventListener("click", async () => {
 
   const snap = await getDocs(q);
 
-  for (const d of snap.docs) {
+  // Convert snapshot to an array so we can sort it
+  const servicesArray = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // Apply the Sort
+  servicesArray.sort((a, b) => {
+  const pA = priorityOrder[a.serviceStatus] || 99;
+  const pB = priorityOrder[b.serviceStatus] || 99;
+
+  if (pA !== pB) {
+    return pA - pB; // Sort by priority first
+  }
+  // If priority is the same, sort by the newest date
+  return (b.startedAt?.seconds || 0) - (a.startedAt?.seconds || 0);
+});
+
+  // Now loop through the sorted array
+  for (const data of servicesArray) {
     const li = document.createElement("li");
-    const data = d.data();
 
     // fetch car details
     const carSnap = await getDoc(doc(db, "cars", data.carId));
     const carText = carSnap.exists()
-      ? `${carSnap.data().carNumber} - ${carSnap.data().brand}`
+      ? `${carSnap.data().carNumber} - ${carSnap.data().brand} (${carSnap.data().model}) `
       : "Unknown car";
-
-      const statusText =
-      data.serviceStatus === "completed"
-        ? "COMPLETED"
-        : "IN PROGRESS (Service center pending)";
 
     li.innerHTML = `
   <strong>${carText}</strong><br>
   📝 Notes: ${data.notes || "—"}<br>
-  Status: ${data.serviceStatus}
+ Status: <span class="status-${data.serviceStatus}">${data.serviceStatus.toUpperCase()}</span><br>
 `;
 
  
@@ -265,18 +300,6 @@ createServiceBtn.addEventListener("click", async () => {
     serviceList.appendChild(li);
   }
 }
-
-// complete service
-serviceList.addEventListener("click", async (e) => {
-  if (e.target.tagName === "BUTTON") {
-    const id = e.target.getAttribute("data-id");
-    await updateDoc(doc(db, "services", id), {
-      serviceStatus: "completed",
-      completedAt: serverTimestamp()
-    });
-    loadServices();
-  }
-});
 
 //service history list
 
@@ -302,47 +325,45 @@ async function loadServiceHistory(carId) {
 
   services.forEach(s => {
     const li = document.createElement("li");
-    const statusLabel =
-  s.serviceStatus === "completed"
-    ? "COMPLETED"
-    : "IN PROGRESS (Awaiting service center)";
 
-const startedText = s.startedAt
-  ? new Date(s.startedAt.seconds * 1000).toLocaleString("en-GB", {hour12: true})
-  : "-";
+    // 1. Define the 3-way logic
+    const statusLabel = 
+        s.serviceStatus === "completed" 
+            ? "COMPLETED" 
+            : s.serviceStatus === "assigned" 
+                ? "ASSIGNED TO TECHNICIAN" 
+                : "IN PROGRESS (Awaiting service center)";
 
-const completedText =
-  s.serviceStatus === "completed" && s.completedAt
-    ? ` | Completed: ${new Date(s.completedAt.seconds * 1000).toLocaleString("en-GB", {hour12: true})}`
-    : "";
+    // 2. Prepare the date strings
+    const startedText = s.startedAt
+        ? new Date(s.startedAt.seconds * 1000).toLocaleString("en-GB", {hour12: true})
+        : "-";
 
-li.innerHTML = `
-  <strong>${s.serviceStatus.toUpperCase()}</strong><br>
-  📝 Notes: ${s.notes || "—"}<br>
-  Started: ${
-    s.startedAt
-      ? new Date(s.startedAt.seconds * 1000).toLocaleDateString("en-GB") 
-      : "-"
-  }
-  ${startedText}
-  ${
-    s.completedAt
-      ? `<br>Completed: ${new Date(s.completedAt.seconds * 1000).toLocaleDateString("en-GB")}`
-      : ""
-  }
-  ${completedText}
-`;
+    const completedText = (s.serviceStatus === "completed" && s.completedAt)
+        ? ` | Completed: ${new Date(s.completedAt.seconds * 1000).toLocaleString("en-GB", {hour12: true})}`
+        : "";
 
+    // 3. Build the HTML (Only set innerHTML ONCE)
+    li.innerHTML = `
+        <strong>${statusLabel}</strong><br>
+        📝 Notes: ${s.notes || "—"}<br>
+        Started: ${startedText}${completedText}
+    `;
 
     historyList.appendChild(li);
-  });
+});
 }
 
 //trigger on click show service history
 
-carSelect.addEventListener("change", () => {
-  if (carSelect.value) {
-    loadServiceHistory(carSelect.value);
+carHistory.addEventListener("change", () => {
+  const selectedCarId = carHistory.value;
+  
+  // Only load if the value isn't the empty placeholder string
+  if (selectedCarId) {
+    loadServiceHistory(selectedCarId);
+  } else {
+    historyList.innerHTML = ""; 
   }
 });
 

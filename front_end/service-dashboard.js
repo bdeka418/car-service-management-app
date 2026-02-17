@@ -88,7 +88,7 @@ if (
 
     const carSnap = await getDoc(doc(db, "cars", data.carId));
     const carText = carSnap.exists()
-      ? `${carSnap.data().carNumber} - ${carSnap.data().brand}`
+      ? `${carSnap.data().carNumber} - ${carSnap.data().brand} (${carSnap.data().model})`
       : data.carId;
 
     let buttonHTML = "";
@@ -165,8 +165,12 @@ serviceList.addEventListener("click", async (e) => {
 
     const carSnap = await getDoc(doc(db, "cars", data.carId));
     const carText = carSnap.exists()
-      ? `${carSnap.data().carNumber} - ${carSnap.data().brand}`
+      ? `${carSnap.data().carNumber} - ${carSnap.data().brand} (${carSnap.data().model})`
       : data.carId;
+
+       const startedTime = data.startedAt
+      ? new Date(data.startedAt.seconds * 1000).toLocaleString("en-GB", {hour12: true})
+      : "-";
 
     const completedTime = data.completedAt
       ? new Date(data.completedAt.seconds * 1000).toLocaleString("en-GB", {hour12: true})
@@ -180,6 +184,7 @@ const noteText = data.notes
 
 li.innerHTML = `
   <strong>${carText}</strong>
+  <br>Started at: ${startedTime}
   <br>Completed at: ${completedTime}
   ${noteText}
 `;
