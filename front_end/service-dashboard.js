@@ -9,7 +9,9 @@ import {
   updateDoc,
   doc,
   serverTimestamp,
-  getDoc,  addDoc 
+  getDoc,
+  addDoc,
+  onSnapshot 
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 //storage
@@ -56,6 +58,11 @@ uploadBtn.disabled = true;
 let currentUser = null;
 let selectedServiceId = null;
 
+let completedUnsubscribe = null;
+
+// Store media listeners to prevent duplicates
+const mediaUnsubscribers = {};
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     window.location.href = "index.html";
@@ -76,100 +83,158 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  loadActiveServices();
-  loadCompletedServices();
+  listenToActiveServices();
+listenToCompletedServices();
+
 
 });
+
+
+function listenToServiceMedia(serviceId, buttonEl, warningEl) {
+
+  // Remove old listener if exists
+  if (mediaUnsubscribers[serviceId]) {
+    mediaUnsubscribers[serviceId]();
+  }
+
+  const mediaRef = collection(db, "services", serviceId, "media");
+
+  mediaUnsubscribers[serviceId] = onSnapshot(
+    mediaRef,
+    (mediaSnap) => {
+      const hasMedia = !mediaSnap.empty;
+
+      buttonEl.disabled = !hasMedia;
+
+      if (warningEl) {
+        warningEl.style.display = hasMedia ? "none" : "block";
+      }
+    },
+    (error) => {
+      // Permission race protection
+      buttonEl.disabled = true;
+    }
+  );
+}
+
+
+
+
 //=======================================
 //fetching the car service details
 //=======================================
 
-async function loadActiveServices() {
-  serviceList.innerHTML = "";
-
+function listenToActiveServices() {
   const q = query(
     collection(db, "services"),
-   where("serviceStatus", "in", ["in_progress", "assigned"])
+    where("serviceStatus", "in", ["in_progress", "assigned"])
   );
 
-  const snap = await getDocs(q);
-  if (snap.empty) {
-    serviceList.innerHTML = "<li>No active services</li>";
-    return;
-  }
-  
-  for (const d of snap.docs) {
-    const data = d.data();
-    
-    if (data.serviceStatus === "completed") {
-       continue;
-     }
+  onSnapshot(q, async (snap) => {
+    serviceList.innerHTML = "";
 
-    if (
-      data.assignedServiceCenterId &&
-      data.assignedServiceCenterId !== currentUser.uid
-    ) {
-      continue;
+    if (snap.empty) {
+      serviceList.innerHTML = "<li>No active services</li>";
+      return;
     }
 
-    const carSnap = await getDoc(doc(db, "cars", data.carId));
-    const carText = carSnap.exists()
-      ? `${carSnap.data().carNumber} - ${carSnap.data().brand} (${carSnap.data().model})`
-      : data.carId;
+    for (const d of snap.docs) {
+      const data = d.data();
 
-    let buttonHTML = "";
+      // 🔐 Assigned filtering (keep this – very important)
+      if (
+        data.assignedServiceCenterId &&
+        data.assignedServiceCenterId !== currentUser.uid
+      ) {
+        continue;
+      }
 
-    if (!data.assignedServiceCenterId) {
-      buttonHTML = `<button data-id="${d.id}" data-action="assign">Assign to Me</button>`;
-    } else if (data.assignedServiceCenterId === currentUser.uid) {
+      const carSnap = await getDoc(doc(db, "cars", data.carId));
+      const carText = carSnap.exists()
+        ? `${carSnap.data().carNumber} - ${carSnap.data().brand} (${carSnap.data().model})`
+        : data.carId;
 
-      selectedServiceId = d.id; // 🔥 Important
+      let buttonHTML = "";
 
-      // Show upload section automatically if already assigned
-      document.getElementById("uploadSection").style.display = "block";
-      uploadBtn.disabled = false;
+      if (!data.assignedServiceCenterId) {
+        buttonHTML = `<button data-id="${d.id}" data-action="assign">Assign to Me</button>`;
+      }
+   else if (data.assignedServiceCenterId === currentUser.uid) {
 
-      const mediaSnap = await getDocs(
-        collection(db, "services", d.id, "media")
-      );
+  const buttonId = `complete-btn-${d.id}`;
+  const warningId = `warning-${d.id}`;
+  const cancelId = `cancel-btn-${d.id}`;
 
-      const hasMedia = !mediaSnap.empty;
+  buttonHTML = `
+    <button
+      id="${buttonId}"
+      data-id="${d.id}"
+      data-action="complete"
+      disabled
+    >
+      Mark Completed
+    </button>
 
-      buttonHTML = `
-        <button 
-          data-id="${d.id}" 
-          data-action="complete"
-          ${hasMedia ? "" : "disabled"}>
-          Mark Completed
-        </button>
-        ${
-          !hasMedia
-            ? "<small>⚠ Upload at least one photo/video before completing</small>"
-            : ""
-        }
-      `;
-    }
+    <button
+    id="${cancelId}"
+    data-id="${d.id}"
+    data-action="cancel"
+    style="margin-left:8px;"
+  >
+    Cancel Assignment
+  </button>
 
-    const li = document.createElement("li");
-    li.innerHTML = `
-      <strong>${carText}</strong><br>
-      📝 Notes: ${data.notes || "—"}
-      ${buttonHTML}
-    `;
-
-    serviceList.appendChild(li);
-  }
+    <small id="${warningId}">
+      ⚠ Upload at least one photo/video before completing
+    </small>
+  `;
 }
+
+
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <strong>${carText}</strong><br>
+        📝 Notes: ${data.notes || "—"}
+        ${buttonHTML}
+      `;
+
+      serviceList.appendChild(li);
+
+      // Attach media listener after element exists
+if (data.assignedServiceCenterId === currentUser.uid) {
+
+  setTimeout(() => {
+    const btn = document.getElementById(`complete-btn-${d.id}`);
+    const warn = document.getElementById(`warning-${d.id}`);
+
+    if (btn) {
+      listenToServiceMedia(d.id, btn, warn);
+    }
+  }, 0);
+
+}
+
+    }
+    
+  });
+}
+
 
 //logic for the completdAt and the ASSIGN to me buttons
 
 serviceList.addEventListener("click", async (e) => {
-  if (e.target.tagName !== "BUTTON") return;
+    //  Robust event delegation
+  const button = e.target.closest("button");
+  if (!button) return;
 
-  const serviceId = e.target.dataset.id;
-  const action = e.target.dataset.action;
+  const serviceId = button.dataset.id;
+  const action = button.dataset.action;
+
+  if (!serviceId || !action) return;
 
   selectedServiceId = serviceId;
+
+  // ================= ASSIGN =================
 
   if (action === "assign") {
     await updateDoc(doc(db, "services", serviceId), {
@@ -179,78 +244,105 @@ serviceList.addEventListener("click", async (e) => {
      
     });
 
-    // 🔥 Enable upload after assign
+    //  Enable upload after assign
     document.getElementById("uploadSection").style.display = "block";
     uploadBtn.disabled = false;
   }
+ // ================= COMPLETE =================
+ if (action === "complete") {
 
-  if (action === "complete") {
-    await updateDoc(doc(db, "services", serviceId), {
-      serviceStatus: "completed",
-      completedAt: serverTimestamp()
-    });
+  await updateDoc(doc(db, "services", serviceId), {
+    serviceStatus: "completed",
+    completedAt: serverTimestamp()
+  });
 
-    // 🔥 Hide upload after completion
-    selectedServiceId = null;
+  // 🧹 Stop media listener
+  if (mediaUnsubscribers[serviceId]) {
+    mediaUnsubscribers[serviceId]();
+    delete mediaUnsubscribers[serviceId];
+  }
+
+  // Hide upload section
+  selectedServiceId = null;
   uploadBtn.disabled = true;
   document.getElementById("uploadSection").style.display = "none";
   uploadStatus.innerText = "";
 }
+// ================= CANCEL =================
+else if (action === "cancel") {
 
-  await loadActiveServices();
-  await loadCompletedServices();
+  await updateDoc(doc(db, "services", serviceId), {
+    serviceStatus: "in_progress",
+    assignedServiceCenterId: null,
+    assignedAt: null
+  });
+
+  // Stop media listener
+  if (mediaUnsubscribers[serviceId]) {
+    mediaUnsubscribers[serviceId]();
+    delete mediaUnsubscribers[serviceId];
+  }
+
+  // Hide upload section
+  selectedServiceId = null;
+  uploadBtn.disabled = true;
+  document.getElementById("uploadSection").style.display = "none";
+  uploadStatus.innerText = "";
+}
 });
+
 
 
   //complete service list
 
-  async function loadCompletedServices() {
-  completedServiceList.innerHTML = "";
+ function listenToCompletedServices() {
 
+  //  Stop previous listener if exists
+  if (completedUnsubscribe) {
+    completedUnsubscribe();
+  }
   const q = query(
     collection(db, "services"),
     where("serviceStatus", "==", "completed"),
     where("assignedServiceCenterId", "==", currentUser.uid)
   );
 
-  const snap = await getDocs(q);
+  onSnapshot(q, async (snap) => {
+    completedServiceList.innerHTML = "";
 
-  if (snap.empty) {
-    completedServiceList.innerHTML = "<li>No completed services</li>";
-    return;
-  }
+    if (snap.empty) {
+      completedServiceList.innerHTML = "<li>No completed services</li>";
+      return;
+    }
 
-  for (const d of snap.docs) {
-    const data = d.data();
+    for (const d of snap.docs) {
+      const data = d.data();
 
-    const carSnap = await getDoc(doc(db, "cars", data.carId));
-    const carText = carSnap.exists()
-      ? `${carSnap.data().carNumber} - ${carSnap.data().brand} (${carSnap.data().model})`
-      : data.carId;
+      const carSnap = await getDoc(doc(db, "cars", data.carId));
+      const carText = carSnap.exists()
+        ? `${carSnap.data().carNumber} - ${carSnap.data().brand} (${carSnap.data().model})`
+        : data.carId;
 
-       const startedTime = data.startedAt
-      ? new Date(data.startedAt.seconds * 1000).toLocaleString("en-GB", {hour12: true})
-      : "-";
+      const startedTime = data.startedAt
+        ? new Date(data.startedAt.seconds * 1000).toLocaleString("en-GB", { hour12: true })
+        : "-";
 
-    const completedTime = data.completedAt
-      ? new Date(data.completedAt.seconds * 1000).toLocaleString("en-GB", {hour12: true})
-      : "-";
+      const completedTime = data.completedAt
+        ? new Date(data.completedAt.seconds * 1000).toLocaleString("en-GB", { hour12: true })
+        : "-";
 
-    const li = document.createElement("li");
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <strong>${carText}</strong><br>
+        Started: ${startedTime}<br>
+        Completed: ${completedTime}
+      `;
 
-const noteText = data.notes
-  ? `<br><em>Note:</em> ${data.notes}`
-  : "";
-
-li.innerHTML = `
-  <strong>${carText}</strong>
-  <br>Started at: ${startedTime}
-  <br>Completed at: ${completedTime}
-  ${noteText}
-`;
-    completedServiceList.appendChild(li);
-  }
+      completedServiceList.appendChild(li);
+    }
+  });
 }
+
 
 
 
@@ -331,8 +423,9 @@ uploadTask.on(
 
     uploadStatus.innerText = "Upload successful ✅";
     mediaInput.value = "";
-    await loadActiveServices();
-    await loadCompletedServices();
+
+
+    
   }
 );
 

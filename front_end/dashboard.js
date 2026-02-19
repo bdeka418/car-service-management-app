@@ -220,7 +220,7 @@ createServiceBtn.addEventListener("click", async () => {
     collection(db, "services"),
     where("ownerId", "==", currentUser.uid),
     where("carId", "==", carSelect.value),
-    where("serviceStatus", "==", "in_progress")
+    where("serviceStatus", "in", ["in_progress", "assigned"])
   );
 
   const activeSnap = await getDocs(activeServiceQuery);
