@@ -5,11 +5,11 @@ import {
   collection,
   query,
   where,
-  getDocs,
   updateDoc,
   doc,
   serverTimestamp,
   getDoc,
+  getDocs,
   addDoc,
   onSnapshot 
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
@@ -18,7 +18,6 @@ import {
 import {
   getStorage,
   ref,
-  uploadBytes,
   getDownloadURL,
   uploadBytesResumable
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-storage.js";
@@ -42,26 +41,19 @@ const serviceList = document.getElementById("serviceList");
 const completedServiceList = document.getElementById("completedServiceList");
 //upload(storge)
 const storage = getStorage(app);
-const mediaInput = document.getElementById("mediaInput");
-const uploadBtn = document.getElementById("uploadMediaBtn");
-const uploadStatus = document.getElementById("uploadStatus");
-
-
-document.getElementById("uploadSection").style.display = "none";
-uploadBtn.disabled = true;
+let clickListenerAttached = false;
 
 
 
 
+// Cache car details to avoid async race in render loop
+const carCache = {};
 
 //can only access by the service-center
 let currentUser = null;
-let selectedServiceId = null;
 
+let activeServicesUnsubscribe = null;
 let completedUnsubscribe = null;
-
-// Store media listeners to prevent duplicates
-const mediaUnsubscribers = {};
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
@@ -89,35 +81,24 @@ listenToCompletedServices();
 
 });
 
+//car cache loader 
+const carDataCache = {};
 
-function listenToServiceMedia(serviceId, buttonEl, warningEl) {
+async function getCarText(carId) {
 
-  // Remove old listener if exists
-  if (mediaUnsubscribers[serviceId]) {
-    mediaUnsubscribers[serviceId]();
-  }
+  if (carDataCache[carId]) return carDataCache[carId];
 
-  const mediaRef = collection(db, "services", serviceId, "media");
+  const carSnap = await getDoc(doc(db, "cars", carId));
 
-  mediaUnsubscribers[serviceId] = onSnapshot(
-    mediaRef,
-    (mediaSnap) => {
-      const hasMedia = !mediaSnap.empty;
+  if (!carSnap.exists()) return carId;
 
-      buttonEl.disabled = !hasMedia;
+  const carText =
+    `${carSnap.data().carNumber} - ${carSnap.data().brand} (${carSnap.data().model})`;
 
-      if (warningEl) {
-        warningEl.style.display = hasMedia ? "none" : "block";
-      }
-    },
-    (error) => {
-      // Permission race protection
-      buttonEl.disabled = true;
-    }
-  );
+  carDataCache[carId] = carText;
+
+  return carText;
 }
-
-
 
 
 //=======================================
@@ -125,173 +106,341 @@ function listenToServiceMedia(serviceId, buttonEl, warningEl) {
 //=======================================
 
 function listenToActiveServices() {
-  const q = query(
+  if (activeServicesUnsubscribe) {
+    activeServicesUnsubscribe();
+  }
+
+  const activeMap = new Map();
+
+  const unassignedQuery = query(
     collection(db, "services"),
-    where("serviceStatus", "in", ["in_progress", "assigned"])
+    where("serviceStatus", "==", "in_progress"),
+    where("assignedServiceCenterId", "==", null)
   );
 
-  onSnapshot(q, async (snap) => {
-    serviceList.innerHTML = "";
+  const assignedQuery = query(
+    collection(db, "services"),
+    where("serviceStatus", "==", "assigned"),
+    where("assignedServiceCenterId", "==", currentUser.uid)
+  );
 
-    if (snap.empty) {
-      serviceList.innerHTML = "<li>No active services</li>";
-      return;
-    }
+  function updateMap(change) {
 
-    for (const d of snap.docs) {
-      const data = d.data();
+  const docId = change.doc.id;
 
-      // 🔐 Assigned filtering (keep this – very important)
-      if (
-        data.assignedServiceCenterId &&
-        data.assignedServiceCenterId !== currentUser.uid
-      ) {
-        continue;
-      }
+  if (change.type === "removed") {
 
-      const carSnap = await getDoc(doc(db, "cars", data.carId));
-      const carText = carSnap.exists()
-        ? `${carSnap.data().carNumber} - ${carSnap.data().brand} (${carSnap.data().model})`
-        : data.carId;
+    activeMap.delete(docId);
 
-      let buttonHTML = "";
+  } else {
 
-      if (!data.assignedServiceCenterId) {
-        buttonHTML = `<button data-id="${d.id}" data-action="assign">Assign to Me</button>`;
-      }
-   else if (data.assignedServiceCenterId === currentUser.uid) {
+    activeMap.set(docId, change.doc);
 
-  const buttonId = `complete-btn-${d.id}`;
-  const warningId = `warning-${d.id}`;
-  const cancelId = `cancel-btn-${d.id}`;
+  }
+
+}
+
+// function renderAll() {
+
+//   serviceList.innerHTML = "";
+
+//   if (activeMap.size === 0) {
+//     serviceList.innerHTML = "<li>No active services available</li>";
+//     return;
+//   }
+
+//   for (const docSnap of activeMap.values()) {
+//      renderServiceDoc(docSnap);
+//   }
+// }
+
+ const handleSnap = async () => {
+
+  serviceList.innerHTML = "";
+
+  const docs = [];
+
+  const unassignedSnap = await getDocs(unassignedQuery);
+  const assignedSnap = await getDocs(assignedQuery);
+
+  docs.push(...unassignedSnap.docs);
+  docs.push(...assignedSnap.docs);
+
+  if (docs.length === 0) {
+    serviceList.innerHTML = "<li>No active services available</li>";
+    return;
+  }
+
+  for (const d of docs) {
+    await renderServiceDoc(d);
+  }
+
+};
+
+  const unsub1 = onSnapshot(unassignedQuery, () => handleSnap());
+const unsub2 = onSnapshot(assignedQuery, () => handleSnap());
+
+  activeServicesUnsubscribe = () => {
+    unsub1();
+    unsub2();
+  };
+}
+
+
+ async function renderServiceDoc(d) {
+  const data = d.data();
+  const serviceId = d.id;
+
+
+  // -------------------------------
+  // Car text (with cache)
+  // -------------------------------
+  const carText = await getCarText(data.carId);
+
+  // -------------------------------
+  // ui
+  // -------------------------------
+  let buttonHTML = "";
+
+// SERVICE NOT ASSIGNED
+if (!data.assignedServiceCenterId) {
 
   buttonHTML = `
-    <button
-      id="${buttonId}"
-      data-id="${d.id}"
-      data-action="complete"
-      disabled
-    >
-      Mark Completed
+    <button data-id="${serviceId}" data-action="assign">
+      Assign Me
+    </button>
+  `;
+
+}
+
+// SERVICE ASSIGNED TO THIS CENTER
+else if (
+  data.assignedServiceCenterId === currentUser.uid &&
+  data.serviceStatus === "assigned"
+) {
+
+  buttonHTML = `
+  ${!data.hasMedia ? `
+    <button data-id="${serviceId}" data-action="cancel">
+      Cancel Assignment
     </button>
 
-    <button
-    id="${cancelId}"
-    data-id="${d.id}"
-    data-action="cancel"
-    style="margin-left:8px;"
-  >
-    Cancel Assignment
-  </button>
+    <input 
+      type="file" 
+      class="media-input" 
+      data-id="${serviceId}"
+    >
 
-    <small id="${warningId}">
-      ⚠ Upload at least one photo/video before completing
-    </small>
+    <button data-id="${serviceId}" data-action="upload">
+      Upload Media
+    </button>
+ ` : ""}
+    <button
+      data-id="${serviceId}"
+      data-action="complete"
+      ${!data.hasMedia ? "disabled" : ""}
+    >
+      Complete Service
+    </button>
+
+   
   `;
 }
+  // -------------------------------
+  // Render list item
+  // -------------------------------
+  const li = document.createElement("li");
+li.id = `service-${serviceId}`;
 
+li.innerHTML = `
+  <div class="service-tile">
 
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <strong>${carText}</strong><br>
-        📝 Notes: ${data.notes || "—"}
-        ${buttonHTML}
-      `;
+    <div class="service-header">
+      <strong>${carText}</strong>
+    </div>
 
-      serviceList.appendChild(li);
+    <div class="service-notes">
+      📝 Notes: ${data.notes || "—"}
+    </div>
 
-      // Attach media listener after element exists
-if (data.assignedServiceCenterId === currentUser.uid) {
+    <div id="media-${serviceId}" class="service-media"></div>
+     <div class="upload-progress" id="progress-${serviceId}"></div>
+    <div class="service-actions">
+      ${buttonHTML}
+    </div>
 
-  setTimeout(() => {
-    const btn = document.getElementById(`complete-btn-${d.id}`);
-    const warn = document.getElementById(`warning-${d.id}`);
+  </div>
+`;
 
-    if (btn) {
-      listenToServiceMedia(d.id, btn, warn);
-    }
-  }, 0);
-
+  const existing = document.getElementById(`service-${serviceId}`);
+if (existing) {
+  existing.replaceWith(li);
+} else {
+  serviceList.appendChild(li);
 }
+if (
+  data.assignedServiceCenterId === currentUser.uid &&
+  data.serviceStatus === "assigned" &&
+  data.hasMedia
+) {
+  await loadServiceMedia(serviceId);
+}
+}
+  
+async function loadServiceMedia(serviceId) {
 
-    }
-    
+ const mediaContainer = document.getElementById(`media-${serviceId}`);
+if (!mediaContainer) return;
+
+/* prevent repeated reads */
+if (mediaContainer.dataset.loaded === "true") return;
+mediaContainer.dataset.loaded = "true";
+
+  try{
+  const mediaSnap = await getDocs(
+    collection(db, "services", serviceId, "media")
+  );
+
+  mediaContainer.innerHTML = "";
+
+  mediaSnap.forEach((doc) => {
+
+    const data = doc.data();
+
+    const img = document.createElement("img");
+    img.src = data.url;
+    img.style.width = "120px";
+
+    mediaContainer.appendChild(img);
+
   });
+}catch (err) {
+ // silent fail (rules blocked media read)
 }
-
+}
 
 //logic for the completdAt and the ASSIGN to me buttons
 
-serviceList.addEventListener("click", async (e) => {
-    //  Robust event delegation
-  const button = e.target.closest("button");
-  if (!button) return;
+if (!clickListenerAttached) {
+  clickListenerAttached = true;
 
-  const serviceId = button.dataset.id;
-  const action = button.dataset.action;
+  serviceList.addEventListener("click", async (e) => {
+  
+    const button = e.target.closest("button");
 
-  if (!serviceId || !action) return;
+    if (!button) return;
 
-  selectedServiceId = serviceId;
+    const serviceId = button.dataset.id;
+    const action = button.dataset.action;
 
-  // ================= ASSIGN =================
+    if (!serviceId || !action) return;   
+    const serviceTile = document.getElementById(`service-${serviceId}`);
+    console.log("ACTION:", action, "SERVICE:", serviceId);
+    if (action === "upload") {
 
-  if (action === "assign") {
-    await updateDoc(doc(db, "services", serviceId), {
-      serviceStatus: "assigned",
-      assignedServiceCenterId: currentUser.uid,
-      assignedAt: serverTimestamp(),
-     
-    });
+  const fileInput = serviceTile.querySelector(".media-input");
+  const progressEl = serviceTile.querySelector(".upload-progress");
 
-    //  Enable upload after assign
-    document.getElementById("uploadSection").style.display = "block";
-    uploadBtn.disabled = false;
+  const file = fileInput.files[0];
+
+  if (!file) {
+    alert("Please select a file first");
+    return;
   }
- // ================= COMPLETE =================
- if (action === "complete") {
+progressEl.innerText = "Starting upload...";
+  console.log("Starting upload...");
 
-  await updateDoc(doc(db, "services", serviceId), {
-    serviceStatus: "completed",
-    completedAt: serverTimestamp()
-  });
+  const serviceSnap = await getDoc(doc(db, "services", serviceId));
+const serviceData = serviceSnap.data();
+  const fileRef = ref(
+    storage,
+    `services/${serviceId}/media/${Date.now()}_${file.name}`
+  );
 
-  // 🧹 Stop media listener
-  if (mediaUnsubscribers[serviceId]) {
-    mediaUnsubscribers[serviceId]();
-    delete mediaUnsubscribers[serviceId];
+ const uploadTask = uploadBytesResumable(fileRef, file, {
+  customMetadata: {
+    assignedServiceCenterId: currentUser.uid,
+    ownerId: serviceData.ownerId
   }
-
-  // Hide upload section
-  selectedServiceId = null;
-  uploadBtn.disabled = true;
-  document.getElementById("uploadSection").style.display = "none";
-  uploadStatus.innerText = "";
-}
-// ================= CANCEL =================
-else if (action === "cancel") {
-
-  await updateDoc(doc(db, "services", serviceId), {
-    serviceStatus: "in_progress",
-    assignedServiceCenterId: null,
-    assignedAt: null
-  });
-
-  // Stop media listener
-  if (mediaUnsubscribers[serviceId]) {
-    mediaUnsubscribers[serviceId]();
-    delete mediaUnsubscribers[serviceId];
-  }
-
-  // Hide upload section
-  selectedServiceId = null;
-  uploadBtn.disabled = true;
-  document.getElementById("uploadSection").style.display = "none";
-  uploadStatus.innerText = "";
-}
 });
 
+  uploadTask.on(
+    "state_changed",
 
+    (snapshot) => {
+      const progress =
+        (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+      console.log("Upload progress:", progress);
+
+       progressEl.innerText = "Uploading: " + Math.round(progress) + "%";
+    },
+
+    (error) => {
+       progressEl.innerText = "Upload failed";
+      console.error("Upload failed:", error);
+    },
+    
+
+    async () => {
+
+      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+       progressEl.innerText = "Upload complete";
+
+await addDoc(
+  collection(db, "services", serviceId, "media"),
+  {
+    url: downloadURL,
+    uploadedBy: currentUser.uid,
+    fileName: file.name,
+    createdAt: serverTimestamp()
+  }
+);
+
+await updateDoc(doc(db, "services", serviceId), {
+  hasMedia: true,
+  mediaUploadedAt: serverTimestamp()
+});
+    }
+  );
+  
+  return;
+}
+    console.log("CLICK HANDLER EXECUTED");
+
+    if (action === "assign") {
+      console.log("ASSIGN CLICKED BY:", currentUser.uid);
+
+      await updateDoc(doc(db, "services", serviceId), {
+        serviceStatus: "assigned",
+        assignedServiceCenterId: currentUser.uid,
+        assignedAt: serverTimestamp(),
+        hasMedia: false
+      });
+      return;
+    }
+
+    if (action === "complete") {
+      await updateDoc(doc(db, "services", serviceId), {
+        serviceStatus: "completed",
+        completedAt: serverTimestamp()
+      });
+    
+      return;
+    }
+
+    if (action === "cancel") {
+      await updateDoc(doc(db, "services", serviceId), {
+        serviceStatus: "in_progress",
+        assignedServiceCenterId: null,
+        assignedAt: null,
+        hasMedia: false
+      });
+      
+      return;
+    }
+  });
+}
+    
 
   //complete service list
 
@@ -307,13 +456,14 @@ else if (action === "cancel") {
     where("assignedServiceCenterId", "==", currentUser.uid)
   );
 
-  onSnapshot(q, async (snap) => {
-    completedServiceList.innerHTML = "";
+  completedUnsubscribe = onSnapshot(q, async (snap) => {
+  completedServiceList.innerHTML = "";
 
-    if (snap.empty) {
-      completedServiceList.innerHTML = "<li>No completed services</li>";
-      return;
-    }
+  if (snap.empty) {
+    completedServiceList.innerHTML = "<li>No completed services</li>";
+    return;
+  }
+
 
     for (const d of snap.docs) {
       const data = d.data();
@@ -353,80 +503,4 @@ const logoutBtn = document.getElementById("logoutBtn");
 logoutBtn.addEventListener("click", async () => {
   await signOut(auth);
   window.location.href = "index.html";
-});
-
-//upload & upload button logic
-
-uploadBtn.addEventListener("click", async () => {
-  if (!selectedServiceId) {
-    alert("Select a service first");
-    return;
-  }
-
-  // 🔐 STATUS CHECK (THIS IS WHERE IT GOES)
-  const serviceSnap = await getDoc(doc(db, "services", selectedServiceId));
-  const serviceData = serviceSnap.data();
-
-  if (serviceData.serviceStatus !== "assigned") {
-    alert("Upload allowed only after assigning the service");
-    return;
-  }
-
-  const file = mediaInput.files[0];
-  if (!file) {
-    alert("Please select a file");
-    return;
-  }
-  
-  uploadStatus.innerText = "Uploading...";
-
-  //upload status add add doc logic 
- 
-  const fileRef = ref(
-  storage,
-  `services/${selectedServiceId}/media/${Date.now()}_${file.name}`
-);
-
-const uploadTask = uploadBytesResumable(fileRef, file, {
-  customMetadata: {
-    assignedServiceCenterId: currentUser.uid
-  }
-});
-
-uploadTask.on(
-  "state_changed",
-
-  null, // progress not needed now
-
-  (error) => {
-    console.error(error);
-    uploadStatus.innerText = "Upload failed ❌";
-  },
-
-  async () => {
-
-     uploadStatus.innerText = "Processing...";
-
-    // ✅ Upload COMPLETED successfully
-    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-
-    // Save media info to Firestore
-    await addDoc(
-      collection(db, "services", selectedServiceId, "media"),
-      {
-        url: downloadURL,
-        uploadedBy: currentUser.uid,
-        fileName: file.name,
-        createdAt: serverTimestamp()
-      }
-    );
-
-    uploadStatus.innerText = "Upload successful ✅";
-    mediaInput.value = "";
-
-
-    
-  }
-);
-
 });

@@ -4,7 +4,7 @@ from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 import { initializeApp } 
 from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
 
-import {getFirestore ,collection, addDoc, query, where, getDocs,setDoc, updateDoc,serverTimestamp, doc, getDoc} 
+import {getFirestore ,collection, addDoc, query, where, getDocs,setDoc, updateDoc,serverTimestamp, doc, getDoc, onSnapshot} 
 from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 
@@ -74,8 +74,8 @@ onAuthStateChanged(auth, async (user) => {
     createServiceBtn.disabled = false;
 
 loadCarOptions();
+listenToCustomerServices();
 
-loadServices();
     }
 });
 
@@ -246,7 +246,8 @@ createServiceBtn.addEventListener("click", async () => {
     serviceNotes.value = "";
     carSelect.selectedIndex = 0;
 
-    loadServices();
+   // listenToCustomerServices();
+
   } catch {
     alert("Failed to create service");
   }
@@ -254,52 +255,51 @@ createServiceBtn.addEventListener("click", async () => {
 
 // list services
 
- async function loadServices() {
-  serviceList.innerHTML = "";
+ function listenToCustomerServices() {
 
   const q = query(
     collection(db, "services"),
     where("ownerId", "==", currentUser.uid)
   );
 
-  const snap = await getDocs(q);
+  onSnapshot(q, async (snap) => {
 
-  // Convert snapshot to an array so we can sort it
-  const servicesArray = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    serviceList.innerHTML = "";
 
-  // Apply the Sort
-  servicesArray.sort((a, b) => {
-  const pA = priorityOrder[a.serviceStatus] || 99;
-  const pB = priorityOrder[b.serviceStatus] || 99;
+    if (snap.empty) {
+      serviceList.innerHTML = "<li>No services yet</li>";
+      return;
+    }
 
-  if (pA !== pB) {
-    return pA - pB; // Sort by priority first
-  }
-  // If priority is the same, sort by the newest date
-  return (b.startedAt?.seconds || 0) - (a.startedAt?.seconds || 0);
-});
+    const servicesArray = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => {
+        const pA = priorityOrder[a.serviceStatus] || 99;
+        const pB = priorityOrder[b.serviceStatus] || 99;
 
-  // Now loop through the sorted array
-  for (const data of servicesArray) {
-    const li = document.createElement("li");
+        if (pA !== pB) return pA - pB;
+        return (b.startedAt?.seconds || 0) - (a.startedAt?.seconds || 0);
+      });
 
-    // fetch car details
-    const carSnap = await getDoc(doc(db, "cars", data.carId));
-    const carText = carSnap.exists()
-      ? `${carSnap.data().carNumber} - ${carSnap.data().brand} (${carSnap.data().model}) `
-      : "Unknown car";
+    for (const data of servicesArray) {
+      const li = document.createElement("li");
 
-    li.innerHTML = `
-  <strong>${carText}</strong><br>
-  📝 Notes: ${data.notes || "—"}<br>
- Status: <span class="status-${data.serviceStatus}">${data.serviceStatus.toUpperCase()}</span><br>
-`;
+      const carSnap = await getDoc(doc(db, "cars", data.carId));
+      const carText = carSnap.exists()
+        ? `${carSnap.data().carNumber} - ${carSnap.data().brand} (${carSnap.data().model})`
+        : "Unknown car";
 
- 
+      li.innerHTML = `
+        <strong>${carText}</strong><br>
+        📝 Notes: ${data.notes || "—"}<br>
+        Status: <b>${data.serviceStatus.toUpperCase()}</b>
+      `;
 
-    serviceList.appendChild(li);
-  }
+      serviceList.appendChild(li);
+    }
+  });
 }
+
 
 //service history list
 
