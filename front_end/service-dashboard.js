@@ -11,7 +11,8 @@ import {
   getDoc,
   getDocs,
   addDoc,
-  onSnapshot 
+  onSnapshot, 
+  orderBy
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 //storage
@@ -140,19 +141,6 @@ function listenToActiveServices() {
 
 }
 
-// function renderAll() {
-
-//   serviceList.innerHTML = "";
-
-//   if (activeMap.size === 0) {
-//     serviceList.innerHTML = "<li>No active services available</li>";
-//     return;
-//   }
-
-//   for (const docSnap of activeMap.values()) {
-//      renderServiceDoc(docSnap);
-//   }
-// }
 
  const handleSnap = async () => {
 
@@ -163,8 +151,8 @@ function listenToActiveServices() {
   const unassignedSnap = await getDocs(unassignedQuery);
   const assignedSnap = await getDocs(assignedQuery);
 
-  docs.push(...unassignedSnap.docs);
   docs.push(...assignedSnap.docs);
+  docs.push(...unassignedSnap.docs);
 
   if (docs.length === 0) {
     serviceList.innerHTML = "<li>No active services available</li>";
@@ -310,6 +298,8 @@ mediaContainer.dataset.loaded = "true";
     const img = document.createElement("img");
     img.src = data.url;
     img.style.width = "120px";
+    img.style.marginRight = "6px";
+    img.style.borderRadius = "6px";
 
     mediaContainer.appendChild(img);
 
@@ -318,6 +308,45 @@ mediaContainer.dataset.loaded = "true";
  // silent fail (rules blocked media read)
 }
 }
+
+//function for loading media in completed services
+async function loadCompletedServiceMedia(serviceId) {
+
+  const mediaContainer =
+  document.getElementById(`completed-media-${serviceId}`);
+
+if (!mediaContainer) return;
+
+if (mediaContainer.dataset.loaded === "true") return;
+mediaContainer.dataset.loaded = "true";
+
+  try {
+
+    const mediaSnap = await getDocs(
+      collection(db, "services", serviceId, "media")
+    );
+
+    mediaContainer.innerHTML = "";
+
+    mediaSnap.forEach((doc) => {
+
+      const data = doc.data();
+
+      const img = document.createElement("img");
+      img.src = data.url;
+      img.style.width = "120px";
+      img.style.marginRight = "6px";
+      img.style.borderRadius = "6px";
+
+      mediaContainer.appendChild(img);
+
+    });
+
+  } catch (err) {
+    console.log("Media read blocked or failed");
+  }
+}
+
 
 //logic for the completdAt and the ASSIGN to me buttons
 
@@ -453,7 +482,8 @@ await updateDoc(doc(db, "services", serviceId), {
   const q = query(
     collection(db, "services"),
     where("serviceStatus", "==", "completed"),
-    where("assignedServiceCenterId", "==", currentUser.uid)
+    where("assignedServiceCenterId", "==", currentUser.uid),
+    orderBy("completedAt", "desc")
   );
 
   completedUnsubscribe = onSnapshot(q, async (snap) => {
@@ -468,10 +498,7 @@ await updateDoc(doc(db, "services", serviceId), {
     for (const d of snap.docs) {
       const data = d.data();
 
-      const carSnap = await getDoc(doc(db, "cars", data.carId));
-      const carText = carSnap.exists()
-        ? `${carSnap.data().carNumber} - ${carSnap.data().brand} (${carSnap.data().model})`
-        : data.carId;
+      const carText = await getCarText(data.carId);
 
       const startedTime = data.startedAt
         ? new Date(data.startedAt.seconds * 1000).toLocaleString("en-GB", { hour12: true })
@@ -482,13 +509,28 @@ await updateDoc(doc(db, "services", serviceId), {
         : "-";
 
       const li = document.createElement("li");
-      li.innerHTML = `
-        <strong>${carText}</strong><br>
-        Started: ${startedTime}<br>
-        Completed: ${completedTime}
-      `;
+
+li.innerHTML = `
+  <div class="service-tile">
+
+    <div class="service-header">
+      <strong>${carText}</strong>
+    </div>
+
+    <div>
+      Started: ${startedTime}<br>
+      Completed: ${completedTime}
+    </div>
+
+    <div id="completed-media-${d.id}" class="service-media"></div>
+
+  </div>
+`;
 
       completedServiceList.appendChild(li);
+      if (data.hasMedia) {
+  loadCompletedServiceMedia(d.id);
+}
     }
   });
 }
