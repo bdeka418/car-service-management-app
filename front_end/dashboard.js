@@ -290,12 +290,29 @@ createServiceBtn.addEventListener("click", async () => {
         : "Unknown car";
 
       li.innerHTML = `
-        <strong>${carText}</strong><br>
-        📝 Notes: ${data.notes || "—"}<br>
-        Status: <b>${data.serviceStatus.toUpperCase()}</b>
-      `;
+<div class="service-tile">
+
+  <div>
+    <strong>${carText}</strong>
+  </div>
+
+  <div>
+    📝 Notes: ${data.notes || "—"}
+  </div>
+
+  <div>
+    Status: <b>${data.serviceStatus.toUpperCase()}</b>
+  </div>
+
+  <div id="media-${data.id}" class="service-media"></div>
+
+</div>
+`;
 
       serviceList.appendChild(li);
+      if (data.hasMedia) {
+  loadMedia(data.id, `media-${data.id}`);
+}
     }
   });
 }
@@ -340,18 +357,37 @@ async function loadServiceHistory(carId) {
         : "-";
 
     const completedText = (s.serviceStatus === "completed" && s.completedAt)
-        ? ` | Completed: ${new Date(s.completedAt.seconds * 1000).toLocaleString("en-GB", {hour12: true})}`
+        ? new Date(s.completedAt.seconds * 1000).toLocaleString("en-GB", {hour12: true})
         : "";
 
     // 3. Build the HTML (Only set innerHTML ONCE)
     li.innerHTML = `
-        <strong>${statusLabel}</strong><br>
-        📝 Notes: ${s.notes || "—"}<br>
-        Started: ${startedText}${completedText}
-    `;
+<div class="service-tile">
+
+  <div>
+    <strong>${statusLabel}</strong>
+  </div>
+
+  <div>
+    📝 Notes: ${s.notes || "—"}
+  </div>
+
+  <div>
+    Started: ${startedText}
+  </div>
+   ${completedText ? `<div>Completed: ${completedText}</div>` : ""}
+
+
+  <div id="history-media-${s.id}" class="service-media"></div>
+
+</div>
+`;
 
     historyList.appendChild(li);
-});
+    if (s.hasMedia) {
+      loadMedia(s.id, `history-media-${s.id}`);
+    }
+  });
 }
 
 //trigger on click show service history
@@ -367,3 +403,40 @@ carHistory.addEventListener("change", () => {
   }
 });
 
+//media loader funtion
+
+async function loadMedia(serviceId, containerId) {
+
+  const mediaContainer = document.getElementById(containerId);
+  if (!mediaContainer) return;
+
+  if (mediaContainer.dataset.loaded === "true") return;
+  mediaContainer.dataset.loaded = "true";
+
+  try {
+
+    const mediaSnap = await getDocs(
+      collection(db, "services", serviceId, "media")
+    );
+
+    mediaContainer.innerHTML = "";
+
+    mediaSnap.forEach((doc) => {
+
+      const data = doc.data();
+
+      const img = document.createElement("img");
+      img.src = data.url;
+
+      img.style.width = "120px";
+      img.style.marginRight = "6px";
+      img.style.borderRadius = "6px";
+
+      mediaContainer.appendChild(img);
+
+    });
+
+  } catch (err) {
+    console.log("Media load failed");
+  }
+}
