@@ -110,7 +110,8 @@ function listenToActiveServices() {
   if (activeServicesUnsubscribe) {
     activeServicesUnsubscribe();
   }
-
+let unassignedDocs = [];
+let assignedDocs = [];
   const activeMap = new Map();
 
   const unassignedQuery = query(
@@ -125,48 +126,42 @@ function listenToActiveServices() {
     where("assignedServiceCenterId", "==", currentUser.uid)
   );
 
-  function updateMap(change) {
-
-  const docId = change.doc.id;
-
-  if (change.type === "removed") {
-
-    activeMap.delete(docId);
-
-  } else {
-
-    activeMap.set(docId, change.doc);
-
-  }
-
-}
 
 
- const handleSnap = async () => {
+
+///////////////////////
+async function renderBoard() {
 
   serviceList.innerHTML = "";
 
   const docs = [];
 
-  const unassignedSnap = await getDocs(unassignedQuery);
-  const assignedSnap = await getDocs(assignedQuery);
-
-  docs.push(...assignedSnap.docs);
-  docs.push(...unassignedSnap.docs);
+  // Priority: assigned first
+  docs.push(...unassignedDocs);
+  docs.push(...assignedDocs);
 
   if (docs.length === 0) {
     serviceList.innerHTML = "<li>No active services available</li>";
     return;
   }
 
-  for (const d of docs) {
-    await renderServiceDoc(d);
-  }
+  await Promise.all(docs.map(d => renderServiceDoc(d)));
 
-};
+}
 
-  const unsub1 = onSnapshot(unassignedQuery, () => handleSnap());
-const unsub2 = onSnapshot(assignedQuery, () => handleSnap());
+  const unsub1 = onSnapshot(unassignedQuery, (snapshot) => {
+
+  unassignedDocs = snapshot.docs;
+  renderBoard();
+
+});
+
+const unsub2 = onSnapshot(assignedQuery, (snapshot) => {
+
+  assignedDocs = snapshot.docs;
+  renderBoard();
+
+});
 
   activeServicesUnsubscribe = () => {
     unsub1();
@@ -261,10 +256,32 @@ li.innerHTML = `
 `;
 
   const existing = document.getElementById(`service-${serviceId}`);
+
 if (existing) {
   existing.replaceWith(li);
 } else {
-  serviceList.appendChild(li);
+
+  // PRIORITY 1: Assigned services (top)
+  if (data.assignedServiceCenterId === currentUser.uid) {
+
+    serviceList.prepend(li);
+
+  } 
+  // PRIORITY 2: Unassigned services (below assigned)
+  else {
+
+    const firstUnassigned = Array.from(serviceList.children).find(el =>
+      !el.innerHTML.includes("Assign Me")
+    );
+
+    if (firstUnassigned) {
+      firstUnassigned.before(li);
+    } else {
+      serviceList.appendChild(li);
+    }
+
+  }
+
 }
 if (
   data.assignedServiceCenterId === currentUser.uid &&

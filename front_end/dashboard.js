@@ -39,14 +39,16 @@ const firebaseConfig = {
   const carHistory = document.getElementById("carHistory");
   //priority
   const priorityOrder = {
-  "assigned": 1,
-  "in_progress": 2,
-  "completed": 3
+  assigned: 1,
+  in_progress: 2,
+  completed: 3,
+  cancelled: 4
 };
   //role
 let currentRole = null;
 let currentUser = null;
 
+const carDataCache = {};
 // 🔐 Auth check
 onAuthStateChanged(auth, async (user) => {
 
@@ -187,8 +189,11 @@ async function loadCarOptions() {
   // Cars exist -> allow service creation
   createServiceBtn.disabled = false;
   
-  snap.forEach(d => {
-    const carData = d.data();
+ snap.forEach(d => {
+
+  const carData = d.data();
+
+  carDataCache[d.id] = carData;
     const displayText = `${carData.carNumber} - ${carData.brand} (${carData.model})`;
     const carId = d.id;
 
@@ -239,6 +244,8 @@ createServiceBtn.addEventListener("click", async () => {
       notes: serviceNotes.value,
       serviceStatus: "in_progress",
       assignedServiceCenterId: null, // NOT assigned yet
+
+      createdAt: serverTimestamp(),
       startedAt: serverTimestamp()
     });
     alert("Service created");
@@ -271,25 +278,51 @@ createServiceBtn.addEventListener("click", async () => {
       return;
     }
 
-    const servicesArray = snap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => {
-        const pA = priorityOrder[a.serviceStatus] || 99;
-        const pB = priorityOrder[b.serviceStatus] || 99;
+  const servicesArray = snap.docs
+  .map(d => ({ id: d.id, ...d.data() }))
+  .sort((a, b) => {
 
-        if (pA !== pB) return pA - pB;
-        return (b.startedAt?.seconds || 0) - (a.startedAt?.seconds || 0);
-      });
+    const pA = priorityOrder[a.serviceStatus] || 99;
+    const pB = priorityOrder[b.serviceStatus] || 99;
 
-    for (const data of servicesArray) {
-      const li = document.createElement("li");
+    if (pA !== pB) return pA - pB;
 
-      const carSnap = await getDoc(doc(db, "cars", data.carId));
-      const carText = carSnap.exists()
-        ? `${carSnap.data().carNumber} - ${carSnap.data().brand} (${carSnap.data().model})`
-        : "Unknown car";
+    const getTime = (s) => {
 
-      li.innerHTML = `
+      let t = s.createdAt?.seconds || 0;
+
+      if (s.assignedAt?.seconds) {
+        t = s.assignedAt.seconds;
+      }
+
+      if (s.completedAt?.seconds) {
+        t = s.completedAt.seconds;
+      }
+
+      if (s.cancelledAt?.seconds) {
+        t = s.cancelledAt.seconds;
+      }
+
+      return t;
+    };
+
+    return getTime(b) - getTime(a);
+
+  });
+
+
+    servicesArray.forEach((data) => {
+
+  const li = document.createElement("li");
+  li.id = `service-${data.id}`;
+
+  const carData = carDataCache[data.carId];
+
+const carText = carData
+  ? `${carData.carNumber} - ${carData.brand} (${carData.model})`
+  : "Unknown car";
+
+  li.innerHTML = `
 <div class="service-tile">
 
   <div>
@@ -304,20 +337,64 @@ createServiceBtn.addEventListener("click", async () => {
     Status: <b>${data.serviceStatus.toUpperCase()}</b>
   </div>
 
+  ${
+    data.serviceStatus === "in_progress"
+      ? `<button onclick="cancelService('${data.id}')">Cancel Service</button>`
+      : ""
+  }
+
   <div id="media-${data.id}" class="service-media"></div>
 
 </div>
 `;
 
-      serviceList.appendChild(li);
-      if (data.hasMedia) {
-  loadMedia(data.id, `media-${data.id}`);
-}
-    }
+  const existing = document.getElementById(`service-${data.id}`);
+
+  if (existing) {
+    existing.replaceWith(li);
+  } else {
+    serviceList.appendChild(li);
+  }
+
+  if (data.hasMedia) {
+    loadMedia(data.id, `media-${data.id}`);
+  }
+
+})
   });
 }
 
 
+//cancel service function
+
+async function cancelService(serviceId) {
+
+  const confirmCancel = confirm(
+    "Are you sure you want to cancel this service request?"
+  );
+
+  if (!confirmCancel) return;
+
+  try {
+
+    await updateDoc(doc(db, "services", serviceId), {
+
+      serviceStatus: "cancelled",
+      cancelledAt: serverTimestamp()
+
+    });
+
+    alert("Service request cancelled");
+
+  } catch (err) {
+
+    console.error(err);
+    alert("Failed to cancel service");
+
+  }
+
+}
+window.cancelService = cancelService;
 //service history list
 
 async function loadServiceHistory(carId) {
@@ -340,27 +417,30 @@ async function loadServiceHistory(carId) {
     .map(d => ({ id: d.id, ...d.data() }))
     .sort((a, b) => (b.startedAt?.seconds || 0) - (a.startedAt?.seconds || 0));
 
-  services.forEach(s => {
+  for (const s of services) {
+
     const li = document.createElement("li");
+    li.id = `history-${s.id}`;   // ⭐ important for safe rendering
 
-    // 1. Define the 3-way logic
-    const statusLabel = 
-        s.serviceStatus === "completed" 
-            ? "COMPLETED" 
-            : s.serviceStatus === "assigned" 
-                ? "ASSIGNED TO TECHNICIAN" 
-                : "IN PROGRESS (Awaiting service center)";
+    const statusLabel =
+      s.serviceStatus === "completed"
+        ? "COMPLETED"
+        : s.serviceStatus === "assigned"
+        ? "ASSIGNED TO TECHNICIAN"
+        : s.serviceStatus === "cancelled"
+        ? "CANCELLED"
+        : "IN PROGRESS (Awaiting service center)";
+        
 
-    // 2. Prepare the date strings
     const startedText = s.startedAt
-        ? new Date(s.startedAt.seconds * 1000).toLocaleString("en-GB", {hour12: true})
-        : "-";
+      ? new Date(s.startedAt.seconds * 1000).toLocaleString("en-GB", { hour12: true })
+      : "-";
 
-    const completedText = (s.serviceStatus === "completed" && s.completedAt)
-        ? new Date(s.completedAt.seconds * 1000).toLocaleString("en-GB", {hour12: true})
+    const completedText =
+      s.serviceStatus === "completed" && s.completedAt
+        ? new Date(s.completedAt.seconds * 1000).toLocaleString("en-GB", { hour12: true })
         : "";
 
-    // 3. Build the HTML (Only set innerHTML ONCE)
     li.innerHTML = `
 <div class="service-tile">
 
@@ -375,19 +455,27 @@ async function loadServiceHistory(carId) {
   <div>
     Started: ${startedText}
   </div>
-   ${completedText ? `<div>Completed: ${completedText}</div>` : ""}
 
+  ${completedText ? `<div>Completed: ${completedText}</div>` : ""}
 
   <div id="history-media-${s.id}" class="service-media"></div>
 
 </div>
 `;
 
-    historyList.appendChild(li);
+    const existing = document.getElementById(`history-${s.id}`);
+
+    if (existing) {
+      existing.replaceWith(li);
+    } else {
+      historyList.appendChild(li);
+    }
+
     if (s.hasMedia) {
       loadMedia(s.id, `history-media-${s.id}`);
     }
-  });
+
+  }
 }
 
 //trigger on click show service history
