@@ -33,7 +33,8 @@ const firebaseConfig = {
   //Service DOMS
   const carSelect = document.getElementById("carSelect");
   const serviceNotes = document.getElementById("serviceNotes");
-  const serviceList = document.getElementById("serviceList");
+  const activeServiceList = document.getElementById("activeServiceList");
+  const serviceHistoryList = document.getElementById("serviceHistoryList");  
   const createServiceBtn = document.getElementById("createServiceBtn");
   const historyList = document.getElementById("historyList");
   const carHistory = document.getElementById("carHistory");
@@ -260,6 +261,39 @@ createServiceBtn.addEventListener("click", async () => {
   }
 });
 
+//timeline builder function:
+
+function buildServiceTimeline(data) {
+
+  const format = (ts) => {
+    if (!ts?.seconds) return null;
+    return new Date(ts.seconds * 1000)
+      .toLocaleString("en-GB", { hour12: true });
+  };
+
+  let html = `<div class="service-timeline">`;
+
+  if (data.startedAt) {
+    html += `<div>🟢 Started: ${format(data.startedAt)}</div>`;
+  }
+
+  if (data.assignedAt) {
+    html += `<div>🟡 Assigned: ${format(data.assignedAt)}</div>`;
+  }
+
+  if (data.completedAt) {
+    html += `<div>✅ Completed: ${format(data.completedAt)}</div>`;
+  }
+
+  if (data.cancelledAt) {
+    html += `<div>❌ Cancelled: ${format(data.cancelledAt)}</div>`;
+  }
+
+  html += `</div>`;
+
+  return html;
+}
+
 // list services
 
  function listenToCustomerServices() {
@@ -271,7 +305,8 @@ createServiceBtn.addEventListener("click", async () => {
 
   onSnapshot(q, async (snap) => {
 
-    serviceList.innerHTML = "";
+    activeServiceList.innerHTML = "";
+    serviceHistoryList.innerHTML = "";
 
     if (snap.empty) {
       serviceList.innerHTML = "<li>No services yet</li>";
@@ -337,6 +372,9 @@ const carText = carData
     Status: <b>${data.serviceStatus.toUpperCase()}</b>
   </div>
 
+  <div><strong>Timeline</strong></div>
+${buildServiceTimeline(data)}
+
   ${
     data.serviceStatus === "in_progress"
       ? `<button onclick="cancelService('${data.id}')">Cancel Service</button>`
@@ -350,11 +388,15 @@ const carText = carData
 
   const existing = document.getElementById(`service-${data.id}`);
 
-  if (existing) {
-    existing.replaceWith(li);
-  } else {
-    serviceList.appendChild(li);
-  }
+  if (data.serviceStatus === "completed" || data.serviceStatus === "cancelled") {
+
+  serviceHistoryList.appendChild(li);
+
+} else {
+
+  activeServiceList.appendChild(li);
+
+}
 
   if (data.hasMedia) {
     loadMedia(data.id, `media-${data.id}`);
@@ -448,16 +490,12 @@ async function loadServiceHistory(carId) {
     <strong>${statusLabel}</strong>
   </div>
 
+<div><strong>Timeline</strong></div>
+${buildServiceTimeline(s)}
   <div>
     📝 Notes: ${s.notes || "—"}
   </div>
-
-  <div>
-    Started: ${startedText}
-  </div>
-
-  ${completedText ? `<div>Completed: ${completedText}</div>` : ""}
-
+  
   <div id="history-media-${s.id}" class="service-media"></div>
 
 </div>
