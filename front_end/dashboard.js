@@ -261,6 +261,55 @@ createServiceBtn.addEventListener("click", async () => {
   }
 });
 
+//analytics function
+
+function calculateServiceMetrics(service) {
+
+  if (!service.startedAt || !service.completedAt) return "";
+
+  const start = service.startedAt.seconds * 1000;
+  const complete = service.completedAt.seconds * 1000;
+
+  const total = complete - start;
+
+  let waiting = null;
+  let repair = null;
+
+  if (service.assignedAt) {
+    const assign = service.assignedAt.seconds * 1000;
+
+    waiting = assign - start;
+    repair = complete - assign;
+  }
+
+  function format(ms) {
+    const mins = Math.floor(ms / 60000);
+    const hours = Math.floor(mins / 60);
+    const minutes = mins % 60;
+
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  }
+
+  let html = `<div class="service-analytics">`;
+
+  html += `<div><strong>Service Analytics</strong></div>`;
+
+  if (waiting !== null) {
+    html += `<div>⏳ Waiting Time: ${format(waiting)}</div>`;
+  }
+
+  if (repair !== null) {
+    html += `<div>🔧 Repair Time: ${format(repair)}</div>`;
+  }
+
+  html += `<div>📊 Total Time: ${format(total)}</div>`;
+
+  html += `</div>`;
+
+  return html;
+}
+
 //timeline builder function:
 
 function buildServiceTimeline(data) {
@@ -492,6 +541,8 @@ async function loadServiceHistory(carId) {
 
 <div><strong>Timeline</strong></div>
 ${buildServiceTimeline(s)}
+
+${s.serviceStatus === "completed" ? calculateServiceMetrics(s) : ""}
   <div>
     📝 Notes: ${s.notes || "—"}
   </div>
