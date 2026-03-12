@@ -203,29 +203,30 @@ else if (
 ) {
 
   buttonHTML = `
-  ${!data.hasMedia ? `
-    <button data-id="${serviceId}" data-action="cancel">
-      Cancel Assignment
-    </button>
+ <button data-id="${serviceId}" data-action="cancel">
+  Cancel Assignment
+</button>
 
-    <input 
-      type="file" 
-      class="media-input" 
-      data-id="${serviceId}"
-    >
+<select class="media-stage" data-id="${serviceId}">
+  <option value="" disabled selected>Select Stage</option>
+  <option value="before">Before Repair</option>
+  <option value="during">During Repair</option>
+  <option value="after">After Repair</option>
+</select>
 
-    <button data-id="${serviceId}" data-action="upload">
-      Upload Media
-    </button>
- ` : ""}
-    <button
-      data-id="${serviceId}"
-      data-action="complete"
-      ${!data.hasMedia ? "disabled" : ""}
-    >
-      Complete Service
-    </button>
+<input type="file" class="media-input" data-id="${serviceId}">
 
+<button data-id="${serviceId}" data-action="upload">
+  Upload Media
+</button>
+
+<button 
+  data-id="${serviceId}" 
+  data-action="complete"
+  ${!data.hasMedia ? "disabled" : ""}
+>
+  Complete Service
+</button>
    
   `;
 }
@@ -306,14 +307,33 @@ mediaContainer.dataset.loaded = "true";
     collection(db, "services", serviceId, "media")
   );
 
-  mediaContainer.innerHTML = "";
+ const stages = {
+  before: [],
+  during: [],
+  after: []
+};
 
-  mediaSnap.forEach((doc) => {
+mediaSnap.forEach((doc) => {
+  const data = doc.data();
+  const stage = data.stage || "during";
 
-    const data = doc.data();
+  stages[stage].push(data.url);
+});
+
+mediaContainer.innerHTML = "";
+
+for (const stage of ["before","during","after"]) {
+
+  if (stages[stage].length === 0) continue;
+
+  const title = document.createElement("div");
+  title.innerHTML = `<strong>${stage.toUpperCase()} REPAIR</strong>`;
+  mediaContainer.appendChild(title);
+
+  stages[stage].forEach(url => {
 
     const img = document.createElement("img");
-    img.src = data.url;
+    img.src = url;
     img.style.width = "120px";
     img.style.marginRight = "6px";
     img.style.borderRadius = "6px";
@@ -321,6 +341,8 @@ mediaContainer.dataset.loaded = "true";
     mediaContainer.appendChild(img);
 
   });
+
+}
 }catch (err) {
  // silent fail (rules blocked media read)
 }
@@ -343,23 +365,42 @@ mediaContainer.dataset.loaded = "true";
       collection(db, "services", serviceId, "media")
     );
 
-    mediaContainer.innerHTML = "";
+   const stages = {
+  before: [],
+  during: [],
+  after: []
+};
 
-    mediaSnap.forEach((doc) => {
+mediaSnap.forEach((doc) => {
+  const data = doc.data();
+  const stage = data.stage || "during";
 
-      const data = doc.data();
+  stages[stage].push(data.url);
+});
 
-      const img = document.createElement("img");
-      img.src = data.url;
-      img.style.width = "120px";
-      img.style.marginRight = "6px";
-      img.style.borderRadius = "6px";
+mediaContainer.innerHTML = "";
 
-      mediaContainer.appendChild(img);
+for (const stage of ["before", "during", "after"]) {
 
-    });
+  if (stages[stage].length === 0) continue;
 
-  } catch (err) {
+  const title = document.createElement("div");
+  title.innerHTML = `<strong>${stage.toUpperCase()} REPAIR</strong>`;
+  mediaContainer.appendChild(title);
+
+  stages[stage].forEach(url => {
+
+    const img = document.createElement("img");
+    img.src = url;
+    img.style.width = "120px";
+    img.style.marginRight = "6px";
+    img.style.borderRadius = "6px";
+
+    mediaContainer.appendChild(img);
+
+  });
+}
+}catch (err) {
     console.log("Media read blocked or failed");
   }
 }
@@ -384,7 +425,32 @@ if (!clickListenerAttached) {
     console.log("ACTION:", action, "SERVICE:", serviceId);
     if (action === "upload") {
 
-  const fileInput = serviceTile.querySelector(".media-input");
+  const fileInput = serviceTile.querySelector(".media-input");    
+  const stageSelect = serviceTile.querySelector(".media-stage");
+  const stage = stageSelect.value;
+  if (!stage) {
+  alert("Please select the repair stage before uploading.");
+  return;
+}
+
+//upload limit check
+
+const mediaSnap = await getDocs(
+  collection(db, "services", serviceId, "media")
+);
+
+let stageCount = 0;
+
+mediaSnap.forEach((doc) => {
+  const m = doc.data();
+  if (m.stage === stage) stageCount++;
+});
+if (stageCount >= 3) {
+  alert("Maximum 3 photos allowed for this stage.");
+  return;
+}
+
+////////////////////////////////
   const progressEl = serviceTile.querySelector(".upload-progress");
 
   const file = fileInput.files[0];
@@ -436,6 +502,7 @@ await addDoc(
   collection(db, "services", serviceId, "media"),
   {
     url: downloadURL,
+    stage: stage,
     uploadedBy: currentUser.uid,
     fileName: file.name,
     createdAt: serverTimestamp()
@@ -466,13 +533,45 @@ await updateDoc(doc(db, "services", serviceId), {
     }
 
     if (action === "complete") {
-      await updateDoc(doc(db, "services", serviceId), {
-        serviceStatus: "completed",
-        completedAt: serverTimestamp()
-      });
-    
-      return;
+
+  const mediaSnap = await getDocs(
+    collection(db, "services", serviceId, "media")
+  );
+
+  const stages = {
+    before: 0,
+    during: 0,
+    after: 0
+  };
+
+  mediaSnap.forEach((doc) => {
+    const m = doc.data();
+    if (stages[m.stage] !== undefined) {
+      stages[m.stage]++;
     }
+  });
+
+  if (stages.before < 1) {
+  alert("Upload at least one BEFORE repair photo.");
+  return;
+}
+
+if (stages.during < 1) {
+  alert("Upload at least one DURING repair photo.");
+  return;
+}
+
+if (stages.after < 1) {
+  alert("Upload at least one AFTER repair photo.");
+  return;
+}
+
+  await updateDoc(doc(db, "services", serviceId), {
+    serviceStatus: "completed",
+    completedAt: serverTimestamp()
+  });
+return;
+}
 
     if (action === "cancel") {
       await updateDoc(doc(db, "services", serviceId), {
