@@ -596,22 +596,42 @@ async function loadMedia(serviceId, containerId) {
       collection(db, "services", serviceId, "media")
     );
 
-    mediaContainer.innerHTML = "";
+    const stages = {
+  before: [],
+  during: [],
+  after: []
+};
 
-    mediaSnap.forEach((doc) => {
+mediaSnap.forEach((doc) => {
+  const data = doc.data();
+  const stage = data.stage || "during";
 
-      const data = doc.data();
+  stages[stage].push(data.url);
+});
 
-      const img = document.createElement("img");
-      img.src = data.url;
+mediaContainer.innerHTML = "";
 
-      img.style.width = "120px";
-      img.style.marginRight = "6px";
-      img.style.borderRadius = "6px";
+for (const stage of ["before","during","after"]) {
 
-      mediaContainer.appendChild(img);
+  if (stages[stage].length === 0) continue;
 
-    });
+  const title = document.createElement("div");
+  title.innerHTML = `<strong>${stage.toUpperCase()} REPAIR</strong>`;
+  mediaContainer.appendChild(title);
+
+  stages[stage].forEach(url => {
+
+    const img = document.createElement("img");
+    img.src = url;
+    img.style.width = "120px";
+    img.style.marginRight = "6px";
+    img.style.borderRadius = "6px";
+
+    mediaContainer.appendChild(img);
+
+  });
+
+}
 
   } catch (err) {
     console.log("Media load failed");
