@@ -320,28 +320,96 @@ function buildServiceTimeline(data) {
       .toLocaleString("en-GB", { hour12: true });
   };
 
-  let html = `<div class="service-timeline">`;
+  let html = `<div style="margin-left:10px; font-size:14px;">`;
 
-  if (data.startedAt) {
-    html += `<div>🟢 Started: ${format(data.startedAt)}</div>`;
+  function step(color, label, time, icon="●", last=false) {
+
+    if (!time) return "";
+
+    return `
+      <div style="display:flex; align-items:flex-start; gap:6px;">
+        
+        <div style="display:flex; flex-direction:column; align-items:center;">
+          
+          <div style="
+            width:18px;
+            height:18px;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:12px;
+            font-weight:bold;
+            color:white;
+            background:${color};
+          ">
+            ${icon}
+          </div>
+
+          ${!last ? `
+          <div style="
+            width:2px;
+            height:18px;
+            background:#ccc;
+          "></div>` : ""}
+
+        </div>
+
+        <div>
+          <div style="font-weight:bold; color:${color};">
+            ${label}
+          </div>
+          <div style="font-size:12px; color:#666;">
+            ${format(time)}
+          </div>
+        </div>
+
+      </div>
+    `;
   }
 
-  if (data.assignedAt) {
-    html += `<div>🟡 Assigned: ${format(data.assignedAt)}</div>`;
-  }
+  html += step("#28a745", "Started", data.startedAt);
 
-  if (data.completedAt) {
-    html += `<div>✅ Completed: ${format(data.completedAt)}</div>`;
-  }
+  html += step("#f0ad4e", "Assigned", data.assignedAt);
 
   if (data.cancelledAt) {
-    html += `<div>❌ Cancelled: ${format(data.cancelledAt)}</div>`;
+
+    html += step("#dc3545", "Cancelled", data.cancelledAt, "✖", true);
+
+  } else {
+
+    html += step("#6c757d", "Repair In Progress", data.assignedAt);
+
+    html += step("#28a745", "Completed", data.completedAt, "✔", true);
+
   }
 
   html += `</div>`;
 
   return html;
 }
+
+//service timeline builder function
+function buildStageProgress(stages) {
+
+  const icon = (done) => done ? "✔" : "◯";
+
+  return `
+    <div style="margin-top:8px; font-size:13px;">
+
+      <div><strong> Service Documentation </strong></div>
+
+      <div>${icon(stages.before)} Before Repair</div>
+
+      <div>${icon(stages.during)} During Repair</div>
+
+      <div>${icon(stages.after)} After Repair</div>
+
+    </div>
+  `;
+}
+
+
 
 // list services
 
@@ -414,7 +482,7 @@ const carText = carData
   </div>
 
   <div>
-    📝 Notes: ${data.notes || "—"}
+    📝Service Notes: ${data.notes || "—"}
   </div>
 
   <div>
@@ -565,13 +633,13 @@ ${statusLabel}
     s.serviceStatus === "cancelled"
     ? `
     
-      <div>
-        Cancelled By: ${
-          s.cancelledRole === "service_center"
-          ? "Service Center"
-          : "Customer"
-        }
-      </div>
+      <div style="color:red;">
+      Cancelled By: ${
+        s.cancelledRole === "service_center"
+        ? "Service Center"
+        : "Customer"
+      }
+    </div>
 
       <div>
         Reason: ${s.cancelReason || "No reason provided"}
@@ -586,7 +654,7 @@ ${statusLabel}
   ${s.serviceStatus === "completed" ? calculateServiceMetrics(s) : ""}
 
   <div>
-    📝 Notes: ${s.notes || "—"}
+    📝Service Notes: ${s.notes || "—"}
   </div>
 
   <div id="history-media-${s.id}" class="service-media"></div>
@@ -651,7 +719,13 @@ mediaSnap.forEach((doc) => {
   stages[stage].push(data.url);
 });
 
-mediaContainer.innerHTML = "";
+const stageStatus = {
+  before: stages.before.length > 0,
+  during: stages.during.length > 0,
+  after: stages.after.length > 0
+};
+
+mediaContainer.innerHTML += buildStageProgress(stageStatus);
 
 for (const stage of ["before","during","after"]) {
 

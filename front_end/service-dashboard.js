@@ -249,7 +249,7 @@ li.innerHTML = `
     </div>
 
     <div class="service-notes">
-      📝 Notes: ${data.notes || "—"}
+      📝service Notes: ${data.notes || "—"}
     </div>
 
     <div id="media-${serviceId}" class="service-media"></div>
@@ -804,6 +804,10 @@ return;
           <div class="service-header">
             <strong>${carText}</strong>
           </div>
+
+          <div class="service-notes">
+      📝service Notes: ${data.notes || "—"}
+    </div>
 
           <div>
   Started: ${startedTime}<br>
