@@ -12,7 +12,9 @@ import {
   getDocs,
   addDoc,
   onSnapshot, 
-  orderBy
+  orderBy,
+  deleteDoc
+
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 //storage
@@ -20,7 +22,9 @@ import {
   getStorage,
   ref,
   getDownloadURL,
-  uploadBytesResumable
+  uploadBytesResumable,
+  deleteObject,
+
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-storage.js";
 
 
@@ -40,6 +44,7 @@ const welcomeText = document.getElementById("welcomeText");
 
 const serviceList = document.getElementById("serviceList");
 const completedServiceList = document.getElementById("completedServiceList");
+const cancelledServiceList = document.getElementById("cancelledServiceList");
 //upload(storge)
 const storage = getStorage(app);
 let clickListenerAttached = false;
@@ -317,35 +322,142 @@ mediaSnap.forEach((doc) => {
   const data = doc.data();
   const stage = data.stage || "during";
 
-  stages[stage].push(data.url);
+  stages[stage].push({
+  url: data.url,
+  id: doc.id
+});
 });
 
 mediaContainer.innerHTML = "";
+
+let completedStages = 0;
+
+if (stages.before.length > 0) completedStages++;
+if (stages.during.length > 0) completedStages++;
+if (stages.after.length > 0) completedStages++;
+
+const progressPercent = completedStages * 33;
+
+const progressTitle = document.createElement("div");
+progressTitle.innerHTML = `<strong>Progress: ${progressPercent}%</strong>`;
+progressTitle.style.marginBottom = "6px";
+
+mediaContainer.appendChild(progressTitle);
+
+//progress bar
+
+const progressBar = document.createElement("div");
+progressBar.style.width = "200px";   // small width
+progressBar.style.background = "#ddd";
+progressBar.style.height = "6px";    // thinner bar
+progressBar.style.borderRadius = "4px";
+progressBar.style.marginBottom = "8px";
+
+const progressFill = document.createElement("div");
+
+progressFill.style.width = "0%";
+progressFill.style.height = "6px";
+progressFill.style.background = "#4CAF50";
+progressFill.style.borderRadius = "6px";
+progressFill.style.transition = "width 0.6s ease";   // smooth animation
+
+progressBar.appendChild(progressFill);
+mediaContainer.appendChild(progressBar);
+
+// animate after render
+setTimeout(() => {
+  progressFill.style.width = progressPercent + "%";
+}, 50);
+
 
 for (const stage of ["before","during","after"]) {
 
   if (stages[stage].length === 0) continue;
 
   const title = document.createElement("div");
-  title.innerHTML = `<strong>${stage.toUpperCase()} REPAIR</strong>`;
+ const stageIcons = {
+  before: "🟢",
+  during: "🟡",
+  after: "🔵"
+};
+
+title.innerHTML = `<strong>${stageIcons[stage]} ${stage.toUpperCase()} REPAIR</strong>`;
   mediaContainer.appendChild(title);
 
-  stages[stage].forEach(url => {
+  stages[stage].forEach((media) => {
 
-    const img = document.createElement("img");
-    img.src = url;
-    img.style.width = "120px";
-    img.style.marginRight = "6px";
-    img.style.borderRadius = "6px";
+  const wrapper = document.createElement("div");
+  wrapper.style.display = "inline-block";
+  wrapper.style.position = "relative";
+  wrapper.style.marginRight = "6px";
 
-    mediaContainer.appendChild(img);
+  const img = document.createElement("img");
+  img.src = media.url;
+  img.style.width = "120px";
+  img.style.borderRadius = "6px";
 
-  });
+  const deleteBtn = document.createElement("button");
+  deleteBtn.innerText = "✖";
+  deleteBtn.style.position = "absolute";
+  deleteBtn.style.top = "2px";
+  deleteBtn.style.right = "2px";
+  deleteBtn.style.background = "red";
+  deleteBtn.style.color = "white";
+  deleteBtn.style.border = "none";
+  deleteBtn.style.borderRadius = "50%";
+  deleteBtn.style.cursor = "pointer";
+
+  deleteBtn.onclick = () => deleteMedia(serviceId, media.id);
+
+  wrapper.appendChild(img);
+  wrapper.appendChild(deleteBtn);
+
+  mediaContainer.appendChild(wrapper);
+
+});
 
 }
 }catch (err) {
  // silent fail (rules blocked media read)
 }
+}
+
+//delete media function
+
+async function deleteMedia(serviceId, mediaId) {
+
+  if (!confirm("Delete this image?")) return;
+
+  try {
+
+    const mediaRef = doc(db, "services", serviceId, "media", mediaId);
+    const mediaSnap = await getDoc(mediaRef);
+
+    if (!mediaSnap.exists()) return;
+
+    const data = mediaSnap.data();
+
+    // delete from storage
+    const storageRef = ref(storage, data.filePath);
+    await deleteObject(storageRef);
+
+    // delete firestore doc
+   await deleteDoc(mediaRef);
+
+const container = document.getElementById(`media-${serviceId}`);
+if (container) {
+  container.dataset.loaded = "false";
+}
+
+loadServiceMedia(serviceId);
+
+  } catch (err) {
+
+    console.error("Delete failed:", err);
+    alert("Failed to delete image");
+
+  }
+
 }
 
 //function for loading media in completed services
@@ -375,30 +487,47 @@ mediaSnap.forEach((doc) => {
   const data = doc.data();
   const stage = data.stage || "during";
 
-  stages[stage].push(data.url);
+ stages[stage].push({
+  url: data.url,
+  id: doc.id
+});
 });
 
 mediaContainer.innerHTML = "";
 
-for (const stage of ["before", "during", "after"]) {
+for (const stage of ["before","during","after"]) {
 
   if (stages[stage].length === 0) continue;
 
   const title = document.createElement("div");
-  title.innerHTML = `<strong>${stage.toUpperCase()} REPAIR</strong>`;
-  mediaContainer.appendChild(title);
 
-  stages[stage].forEach(url => {
+  const stageIcons = {
+  before: "🟢",
+  during: "🟡",
+  after: "🔵"
+};
 
-    const img = document.createElement("img");
-    img.src = url;
-    img.style.width = "120px";
-    img.style.marginRight = "6px";
-    img.style.borderRadius = "6px";
+title.innerHTML = `<strong>${stageIcons[stage]} ${stage.toUpperCase()} REPAIR</strong>`;
+mediaContainer.appendChild(title);
 
-    mediaContainer.appendChild(img);
+stages[stage].forEach((media) => {
 
-  });
+  const wrapper = document.createElement("div");
+  wrapper.style.display = "inline-block";
+  wrapper.style.position = "relative";
+  wrapper.style.marginRight = "6px";
+
+  const img = document.createElement("img");
+  img.src = media.url;
+  img.style.width = "120px";
+  img.style.borderRadius = "6px";
+
+  wrapper.appendChild(img);
+
+  mediaContainer.appendChild(wrapper);
+
+});
+
 }
 }catch (err) {
     console.log("Media read blocked or failed");
@@ -502,6 +631,7 @@ await addDoc(
   collection(db, "services", serviceId, "media"),
   {
     url: downloadURL,
+    filePath: fileRef.fullPath,
     stage: stage,
     uploadedBy: currentUser.uid,
     fileName: file.name,
@@ -509,10 +639,12 @@ await addDoc(
   }
 );
 
-await updateDoc(doc(db, "services", serviceId), {
-  hasMedia: true,
-  mediaUploadedAt: serverTimestamp()
-});
+const container = document.getElementById(`media-${serviceId}`);
+if (container) {
+  container.dataset.loaded = "false";
+}
+
+loadServiceMedia(serviceId);
     }
   );
   
@@ -574,15 +706,43 @@ return;
 }
 
     if (action === "cancel") {
-      await updateDoc(doc(db, "services", serviceId), {
-        serviceStatus: "in_progress",
-        assignedServiceCenterId: null,
-        assignedAt: null,
-        hasMedia: false
-      });
-      
-      return;
+
+  const reason = prompt("Enter reason for cancelling this service:");
+
+  if (!reason) {
+    alert("Cancellation requires a reason.");
+    return;
+  }
+
+  const mediaSnap = await getDocs(
+    collection(db, "services", serviceId, "media")
+  );
+
+  for (const mediaDoc of mediaSnap.docs) {
+
+    const data = mediaDoc.data();
+
+    try {
+      const storageRef = ref(storage, data.filePath);
+      await deleteObject(storageRef);
+    } catch (err) {
+      console.log("Storage delete skipped");
     }
+
+    await deleteDoc(mediaDoc.ref);
+  }
+
+  await updateDoc(doc(db, "services", serviceId), {
+    serviceStatus: "cancelled",
+    cancelReason: reason,
+    cancelledBy: currentUser.uid,
+    cancelledRole: "service_center",
+    cancelledAt: serverTimestamp(),
+    hasMedia: false
+  });
+
+  return;
+}
   });
 }
     
@@ -591,27 +751,37 @@ return;
 
  function listenToCompletedServices() {
 
-  //  Stop previous listener if exists
+  // Stop previous listener if exists
   if (completedUnsubscribe) {
     completedUnsubscribe();
   }
-  const q = query(
+
+  completedServiceList.innerHTML = "";
+
+  // COMPLETED SERVICES QUERY
+  const completedQuery = query(
     collection(db, "services"),
     where("serviceStatus", "==", "completed"),
     where("assignedServiceCenterId", "==", currentUser.uid),
     orderBy("completedAt", "desc")
   );
 
-  completedUnsubscribe = onSnapshot(q, async (snap) => {
-  completedServiceList.innerHTML = "";
+  // CANCELLED SERVICES QUERY
+  const cancelledQuery = query(
+    collection(db, "services"),
+    where("serviceStatus", "==", "cancelled"),
+    where("assignedServiceCenterId", "==", currentUser.uid),
+    orderBy("cancelledAt", "desc")
+  );
 
-  if (snap.empty) {
-    completedServiceList.innerHTML = "<li>No completed services</li>";
+  const renderServices = async (snap) => {
+
+     if (snap.empty) {
     return;
   }
 
-
     for (const d of snap.docs) {
+
       const data = d.data();
 
       const carText = await getCarText(data.carId);
@@ -624,31 +794,90 @@ return;
         ? new Date(data.completedAt.seconds * 1000).toLocaleString("en-GB", { hour12: true })
         : "-";
 
+      const existing = document.getElementById(`completed-${d.id}`);
       const li = document.createElement("li");
+        li.id = `completed-${d.id}`;
 
-li.innerHTML = `
-  <div class="service-tile">
+      li.innerHTML = `
+        <div class="service-tile">
 
-    <div class="service-header">
-      <strong>${carText}</strong>
-    </div>
+          <div class="service-header">
+            <strong>${carText}</strong>
+          </div>
 
-    <div>
-      Started: ${startedTime}<br>
-      Completed: ${completedTime}
-    </div>
+          <div>
+  Started: ${startedTime}<br>
 
-    <div id="completed-media-${d.id}" class="service-media"></div>
+  ${
+    data.serviceStatus === "completed"
+      ? `Completed: ${completedTime}`
+      : data.serviceStatus === "cancelled"
+      ? `Cancelled: ${
+          data.cancelledAt
+            ? new Date(data.cancelledAt.seconds * 1000)
+                .toLocaleString("en-GB", { hour12: true })
+            : "-"
+        }`
+      : ""
+  }
+</div>
 
-  </div>
-`;
+          ${
+            data.serviceStatus === "cancelled"
+            ? `
+            <div style="color:red;font-weight:bold;">
+              ❌ CANCELLED
+            </div>
 
-      completedServiceList.appendChild(li);
-      if (data.hasMedia) {
-  loadCompletedServiceMedia(d.id);
+            <div>
+             <b>Reason:</b> ${data.cancelReason || "No reason provided"}
+            </div>
+            `
+            : ""
+          }
+
+          <div id="completed-media-${d.id}" class="service-media"></div>
+
+        </div>
+      `;
+
+     if (data.serviceStatus === "cancelled") {
+
+  const existingCancelled = document.getElementById(`cancelled-${d.id}`);
+  li.id = `cancelled-${d.id}`;
+
+  if (existingCancelled) {
+    existingCancelled.replaceWith(li);
+  } else {
+    cancelledServiceList.appendChild(li);
+  }
+
+} else {
+
+  const existingCompleted = document.getElementById(`completed-${d.id}`);
+  li.id = `completed-${d.id}`;
+
+  if (existingCompleted) {
+    existingCompleted.replaceWith(li);
+  } else {
+    completedServiceList.appendChild(li);
+  }
+
 }
+
+      if (data.hasMedia) {
+        loadCompletedServiceMedia(d.id);
+      }
     }
-  });
+  };
+
+  const unsubCompleted = onSnapshot(completedQuery, renderServices);
+  const unsubCancelled = onSnapshot(cancelledQuery, renderServices);
+
+  completedUnsubscribe = () => {
+    unsubCompleted();
+    unsubCancelled();
+  };
 }
 
 

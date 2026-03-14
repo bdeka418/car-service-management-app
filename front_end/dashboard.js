@@ -420,6 +420,23 @@ const carText = carData
   <div>
     Status: <b>${data.serviceStatus.toUpperCase()}</b>
   </div>
+  ${
+  data.serviceStatus === "cancelled"
+  ? `
+    <div style="color:red;">
+      ❌ Cancelled By: ${
+        data.cancelledRole === "service_center"
+        ? "Service Center"
+        : "Customer"
+      }
+    </div>
+
+    <div>
+      Reason: ${data.cancelReason || "No reason provided"}
+    </div>
+  `
+  : ""
+}
 
   <div><strong>Timeline</strong></div>
 ${buildServiceTimeline(data)}
@@ -466,13 +483,21 @@ async function cancelService(serviceId) {
 
   if (!confirmCancel) return;
 
+   const reason = prompt("Enter reason for cancelling this service:");
+
+  if (!reason) {
+    alert("Cancellation requires a reason");
+    return;
+  }
+
   try {
 
     await updateDoc(doc(db, "services", serviceId), {
-
       serviceStatus: "cancelled",
+      cancelReason: reason,
+      cancelledRole: "customer",
+      cancelledBy: currentUser.uid,
       cancelledAt: serverTimestamp()
-
     });
 
     alert("Service request cancelled");
@@ -483,7 +508,6 @@ async function cancelService(serviceId) {
     alert("Failed to cancel service");
 
   }
-
 }
 window.cancelService = cancelService;
 //service history list
@@ -523,30 +547,48 @@ async function loadServiceHistory(carId) {
         : "IN PROGRESS (Awaiting service center)";
         
 
-    const startedText = s.startedAt
-      ? new Date(s.startedAt.seconds * 1000).toLocaleString("en-GB", { hour12: true })
-      : "-";
-
-    const completedText =
-      s.serviceStatus === "completed" && s.completedAt
-        ? new Date(s.completedAt.seconds * 1000).toLocaleString("en-GB", { hour12: true })
-        : "";
 
     li.innerHTML = `
 <div class="service-tile">
 
   <div>
-    <strong>${statusLabel}</strong>
+    <strong style="
+  color:${s.serviceStatus === "cancelled" ? "red" :
+         s.serviceStatus === "completed" ? "green" :
+         s.serviceStatus === "assigned" ? "goldenrod" : "black"}
+">
+${statusLabel}
+</strong>
   </div>
 
-<div><strong>Timeline</strong></div>
-${buildServiceTimeline(s)}
+  ${
+    s.serviceStatus === "cancelled"
+    ? `
+    
+      <div>
+        Cancelled By: ${
+          s.cancelledRole === "service_center"
+          ? "Service Center"
+          : "Customer"
+        }
+      </div>
 
-${s.serviceStatus === "completed" ? calculateServiceMetrics(s) : ""}
+      <div>
+        Reason: ${s.cancelReason || "No reason provided"}
+      </div>
+    `
+    : ""
+  }
+
+  <div><strong>Timeline</strong></div>
+  ${buildServiceTimeline(s)}
+
+  ${s.serviceStatus === "completed" ? calculateServiceMetrics(s) : ""}
+
   <div>
     📝 Notes: ${s.notes || "—"}
   </div>
-  
+
   <div id="history-media-${s.id}" class="service-media"></div>
 
 </div>
