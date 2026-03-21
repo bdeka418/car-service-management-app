@@ -44,6 +44,7 @@ admin.initializeApp();
 const {
   onDocumentCreated,
   onDocumentUpdated,
+  onDocumentDeleted
 } = require("firebase-functions/v2/firestore");
 
 const { setGlobalOptions } = require("firebase-functions/v2");
@@ -73,6 +74,84 @@ exports.onMediaUpload = onDocumentCreated(
       hasMedia: true,
       mediaUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+  }
+);
+
+
+//delete trigger
+// COMMON FUNCTION (REUSABLE)
+async function recalculateStep(serviceId) {
+
+  const mediaSnap = await db
+    .collection("services")
+    .doc(serviceId)
+    .collection("media")
+    .get();
+
+  let hasBefore = false;
+  let hasDuring = false;
+  let hasAfter = false;
+
+  mediaSnap.forEach(doc => {
+    const stage = doc.data().stage;
+
+    if (stage === "before") hasBefore = true;
+    if (stage === "during") hasDuring = true;
+    if (stage === "after") hasAfter = true;
+  });
+
+  let newStep = "before";
+  let hasMedia = false;
+
+  if (hasBefore) {
+    hasMedia = true;
+    newStep = "before";
+
+    if (hasDuring) {
+      newStep = "during";
+
+      if (hasAfter) {
+        newStep = "after";
+      }
+    }
+  }
+
+  // no media at all
+  if (!hasBefore && !hasDuring && !hasAfter) {
+    newStep = "before";
+    hasMedia = false;
+  }
+
+  await db.doc(`services/${serviceId}`).update({
+    currentStep: newStep,
+    hasMedia: hasMedia,
+    mediaUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  console.log("STEP RECALCULATED:", newStep);
+}
+
+// 🔥 ON UPLOAD
+exports.onMediaCreate = onDocumentCreated(
+  "services/{serviceId}/media/{mediaId}",
+  async (event) => {
+    const { serviceId } = event.params;
+
+    console.log("MEDIA CREATED:", serviceId);
+
+    await recalculateStep(serviceId);
+  }
+);
+
+// 🔥 ON DELETE
+exports.onMediaDelete = onDocumentDeleted(
+  "services/{serviceId}/media/{mediaId}",
+  async (event) => {
+    const { serviceId } = event.params;
+
+    console.log("MEDIA DELETED:", serviceId);
+
+    await recalculateStep(serviceId);
   }
 );
 

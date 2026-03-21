@@ -389,6 +389,83 @@ function buildServiceTimeline(data) {
   return html;
 }
 
+//service timelog builder function
+
+async function buildServiceActivityLog(serviceId, data) {
+
+const format = (ts) => {
+if (!ts?.seconds) return null;
+return new Date(ts.seconds * 1000)
+.toLocaleString("en-GB", { hour12: true });
+};
+
+const events = [];
+
+if (data.startedAt) {
+events.push({ time: data.startedAt, text: "Service requested" });
+}
+
+if (data.assignedAt) {
+events.push({ time: data.assignedAt, text: "Assigned to service center" });
+}
+
+if (data.completedAt) {
+events.push({ time: data.completedAt, text: "Service completed" });
+}
+
+if (data.cancelledAt) {
+events.push({ time: data.cancelledAt, text: "Service cancelled" });
+}
+
+try {
+
+
+const mediaSnap = await getDocs(
+  collection(db, "services", serviceId, "media")
+);
+
+mediaSnap.forEach((doc) => {
+
+  const m = doc.data();
+
+  if (!m.createdAt) return;
+
+  let label = "Photo uploaded";
+
+  if (m.stage === "before") label = "Before repair photo uploaded";
+  if (m.stage === "during") label = "During repair photo uploaded";
+  if (m.stage === "after") label = "After repair photo uploaded";
+
+  events.push({
+    time: m.createdAt,
+    text: label
+  });
+
+});
+
+
+} catch (e) {
+console.log("Media log skipped", e);
+}
+
+// sort timeline
+events.sort((a, b) => a.time.seconds - b.time.seconds);
+
+let html = `<div style="margin-top:10px;font-size:13px;">`;
+
+html += `<div><strong>Activity Log</strong></div>`;
+
+events.forEach(e => {
+html += `<div>${format(e.time)} — ${e.text}</div>`;
+});
+
+html += `</div>`;
+
+return html;
+}
+
+
+
 //service timeline builder function
 function buildStageProgress(stages) {
 
@@ -463,8 +540,8 @@ function buildStageProgress(stages) {
   });
 
 
-    servicesArray.forEach((data) => {
-
+   for (const data of servicesArray) {
+const activityLog = await buildServiceActivityLog(data.id, data);
   const li = document.createElement("li");
   li.id = `service-${data.id}`;
 
@@ -509,6 +586,8 @@ const carText = carData
   <div><strong>Timeline</strong></div>
 ${buildServiceTimeline(data)}
 
+${activityLog}
+
   ${
     data.serviceStatus === "in_progress"
       ? `<button onclick="cancelService('${data.id}')">Cancel Service</button>`
@@ -536,7 +615,7 @@ ${buildServiceTimeline(data)}
     loadMedia(data.id, `media-${data.id}`);
   }
 
-})
+}
   });
 }
 
@@ -650,6 +729,8 @@ ${statusLabel}
 
   <div><strong>Timeline</strong></div>
   ${buildServiceTimeline(s)}
+
+${await buildServiceActivityLog(s.id, s)}
 
   ${s.serviceStatus === "completed" ? calculateServiceMetrics(s) : ""}
 
