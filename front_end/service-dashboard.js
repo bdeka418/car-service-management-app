@@ -178,7 +178,7 @@ const unsub2 = onSnapshot(assignedQuery, (snapshot) => {
  async function renderServiceDoc(d) {
   const data = d.data();
   const serviceId = d.id;
-
+const activityLog = await buildServiceActivityLog(serviceId, data);
 
   // -------------------------------
   // Car text (with cache)
@@ -213,10 +213,19 @@ else if (
 </button>
 
 <select class="media-stage" data-id="${serviceId}">
-  <option value="" disabled selected>Select Stage</option>
-  <option value="before">Before Repair</option>
-  <option value="during">During Repair</option>
-  <option value="after">After Repair</option>
+  <option value="">Select Stage</option>
+
+  <option value="before" ${data.currentStep === "before" ? "selected" : ""}>
+    Before Repair
+  </option>
+
+  <option value="during" ${data.currentStep === "during" ? "selected" : ""}>
+    During Repair
+  </option>
+
+  <option value="after" ${data.currentStep === "after" ? "selected" : ""}>
+    After Repair
+  </option>
 </select>
 
 <input type="file" class="media-input" data-id="${serviceId}">
@@ -251,6 +260,7 @@ li.innerHTML = `
     <div class="service-notes">
       📝service Notes: ${data.notes || "—"}
     </div>
+  ${activityLog}
 
     <div id="media-${serviceId}" class="service-media"></div>
      <div class="upload-progress" id="progress-${serviceId}"></div>
@@ -459,6 +469,77 @@ loadServiceMedia(serviceId);
   }
 
 }
+//service timelog builder function
+
+async function buildServiceActivityLog(serviceId, data) {
+
+  const format = (ts) => {
+    if (!ts?.seconds) return null;
+    return new Date(ts.seconds * 1000)
+      .toLocaleString("en-GB", { hour12: true });
+  };
+
+  const events = [];
+
+  if (data.startedAt) {
+    events.push({ time: data.startedAt, text: "Service requested" });
+  }
+
+  if (data.assignedAt) {
+    events.push({ time: data.assignedAt, text: "Assigned to service center" });
+  }
+
+  if (data.completedAt) {
+    events.push({ time: data.completedAt, text: "Service completed" });
+  }
+
+  if (data.cancelledAt) {
+    events.push({ time: data.cancelledAt, text: "Service cancelled" });
+  }
+
+  try {
+
+    const mediaSnap = await getDocs(
+      collection(db, "services", serviceId, "media")
+    );
+
+    mediaSnap.forEach((doc) => {
+
+      const m = doc.data();
+
+      if (!m.createdAt) return;
+
+      let label = "Photo uploaded";
+
+      if (m.stage === "before") label = "Before repair photo uploaded";
+      if (m.stage === "during") label = "During repair photo uploaded";
+      if (m.stage === "after") label = "After repair photo uploaded";
+
+      events.push({
+        time: m.createdAt,
+        text: label
+      });
+
+    });
+
+  } catch (e) {
+    console.log("Media log skipped");
+  }
+
+  events.sort((a,b)=>a.time.seconds - b.time.seconds);
+
+  let html = `<div style="margin-top:10px;font-size:13px;">`;
+  html += `<div><strong>Activity Log</strong></div>`;
+
+  events.forEach(e=>{
+    html += `<div>${format(e.time)} — ${e.text}</div>`;
+  });
+
+  html += `</div>`;
+
+  return html;
+}
+
 
 //function for loading media in completed services
 async function loadCompletedServiceMedia(serviceId) {
@@ -552,13 +633,43 @@ if (!clickListenerAttached) {
     if (!serviceId || !action) return;   
     const serviceTile = document.getElementById(`service-${serviceId}`);
     console.log("ACTION:", action, "SERVICE:", serviceId);
+
+
+    //upload logic
     if (action === "upload") {
 
   const fileInput = serviceTile.querySelector(".media-input");    
   const stageSelect = serviceTile.querySelector(".media-stage");
   const stage = stageSelect.value;
-  if (!stage) {
+
+const serviceSnap = await getDoc(doc(db, "services", serviceId));
+const serviceData = serviceSnap.data();
+let currentStep = serviceData.currentStep;
+
+
+console.log("SELECTED STAGE:", stage);
+console.log("CURRENT STEP:", currentStep);
+// 🔥 STAGE ORDER
+const stageOrder = ["before", "during", "after", "done"];
+
+const currentIndex = stageOrder.indexOf(currentStep);
+const selectedIndex = stageOrder.indexOf(stage);
+
+// ❌ no stage selected
+if (!stage) {
   alert("Please select the repair stage before uploading.");
+  return;
+}
+
+// ❌ prevent skipping forward
+if (selectedIndex > currentIndex + 1) {
+  alert(`You must complete "${currentStep}" stage first.`);
+  return;
+}
+
+// ❌ prevent going backward
+if (selectedIndex < currentIndex) {
+  alert("You cannot upload previous stage images.");
   return;
 }
 
@@ -591,8 +702,6 @@ if (stageCount >= 3) {
 progressEl.innerText = "Starting upload...";
   console.log("Starting upload...");
 
-  const serviceSnap = await getDoc(doc(db, "services", serviceId));
-const serviceData = serviceSnap.data();
   const fileRef = ref(
     storage,
     `services/${serviceId}/media/${Date.now()}_${file.name}`
@@ -639,10 +748,13 @@ await addDoc(
   }
 );
 
+
+
 const container = document.getElementById(`media-${serviceId}`);
 if (container) {
   container.dataset.loaded = "false";
 }
+
 
 loadServiceMedia(serviceId);
     }
@@ -659,7 +771,9 @@ loadServiceMedia(serviceId);
         serviceStatus: "assigned",
         assignedServiceCenterId: currentUser.uid,
         assignedAt: serverTimestamp(),
-        hasMedia: false
+        hasMedia: false,
+//it will be used to track if any media has been uploaded for this service
+        currentStep: "before"
       });
       return;
     }
@@ -782,7 +896,8 @@ return;
 
     for (const d of snap.docs) {
 
-      const data = d.data();
+      const data = d.data();  
+      const activityLog = await buildServiceActivityLog(d.id, data);
 
       const carText = await getCarText(data.carId);
 
@@ -808,7 +923,7 @@ return;
           <div class="service-notes">
       📝service Notes: ${data.notes || "—"}
     </div>
-
+      ${activityLog}
           <div>
   Started: ${startedTime}<br>
 
@@ -824,6 +939,8 @@ return;
         }`
       : ""
   }
+
+
 </div>
 
           ${
