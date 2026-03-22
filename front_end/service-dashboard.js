@@ -177,8 +177,28 @@ const unsub2 = onSnapshot(assignedQuery, (snapshot) => {
 
  async function renderServiceDoc(d) {
   const data = d.data();
+  const currentStep = data.currentStep || "before";
   const serviceId = d.id;
 const activityLog = await buildServiceActivityLog(serviceId, data);
+
+// CHECK STAGE COMPLETION
+const mediaSnap = await getDocs(
+  collection(db, "services", serviceId, "media")
+);
+
+let hasBefore = false;
+let hasDuring = false;
+let hasAfter = false;
+
+mediaSnap.forEach(doc => {
+  const stage = doc.data().stage;
+
+  if (stage === "before") hasBefore = true;
+  if (stage === "during") hasDuring = true;
+  if (stage === "after") hasAfter = true;
+});
+
+const canComplete = hasBefore && hasDuring && hasAfter;
 
   // -------------------------------
   // Car text (with cache)
@@ -188,6 +208,35 @@ const activityLog = await buildServiceActivityLog(serviceId, data);
   // -------------------------------
   // ui
   // -------------------------------
+
+//helper to generate stage options with proper enabling/disabling based on current step
+  function getStageOptions(currentStep) {
+  const stages = ["before", "during", "after"];
+
+  return stages.map(stage => {
+    let disabled = false;
+
+    if (currentStep === "before") {
+      // allow before + during
+      if (stage === "after") disabled = true;
+    }
+
+    if (currentStep === "during") {
+      // allow during + after
+      if (stage === "before") disabled = true;
+    }
+
+    if (currentStep === "after") {
+      // allow only after
+      if (stage !== "after") disabled = true;
+    }
+
+    return `<option value="${stage}" ${disabled ? "disabled" : ""}>
+      ${stage.charAt(0).toUpperCase() + stage.slice(1)} Repair
+    </option>`;
+  }).join("");
+}
+
   let buttonHTML = "";
 
 // SERVICE NOT ASSIGNED
@@ -201,6 +250,8 @@ if (!data.assignedServiceCenterId) {
 
 }
 
+
+
 // SERVICE ASSIGNED TO THIS CENTER
 else if (
   data.assignedServiceCenterId === currentUser.uid &&
@@ -213,19 +264,8 @@ else if (
 </button>
 
 <select class="media-stage" data-id="${serviceId}">
-  <option value="">Select Stage</option>
-
-  <option value="before" ${data.currentStep === "before" ? "selected" : ""}>
-    Before Repair
-  </option>
-
-  <option value="during" ${data.currentStep === "during" ? "selected" : ""}>
-    During Repair
-  </option>
-
-  <option value="after" ${data.currentStep === "after" ? "selected" : ""}>
-    After Repair
-  </option>
+  <option value="" disabled>Select Stage</option>
+  ${getStageOptions(data.currentStep || "before")}
 </select>
 
 <input type="file" class="media-input" data-id="${serviceId}">
@@ -237,7 +277,7 @@ else if (
 <button 
   data-id="${serviceId}" 
   data-action="complete"
-  ${!data.hasMedia ? "disabled" : ""}
+  ${!canComplete ? "disabled" : ""}
 >
   Complete Service
 </button>
@@ -340,6 +380,38 @@ mediaSnap.forEach((doc) => {
 
 mediaContainer.innerHTML = "";
 
+// 🔥 STAGE STATUS SUMMARY
+const summary = document.createElement("div");
+summary.style.marginBottom = "8px";
+
+const stageStatus = {
+  before: stages.before.length,
+  during: stages.during.length,
+  after: stages.after.length
+};
+
+const getStatus = (count) =>
+  count > 0 ? "✔" : "❌";
+
+summary.innerHTML = `
+  <div><strong>Stage Progress</strong></div>
+
+  <span class="stage-badge stage-before">
+    BEFORE ${stageStatus.before > 0 ? "✔" : "❌"} (${stageStatus.before}/3)
+  </span>
+
+  <span class="stage-badge stage-during">
+    DURING ${stageStatus.during > 0 ? "✔" : "❌"} (${stageStatus.during}/3)
+  </span>
+
+  <span class="stage-badge stage-after">
+    AFTER ${stageStatus.after > 0 ? "✔" : "❌"} (${stageStatus.after}/3)
+  </span>
+`;
+
+mediaContainer.appendChild(summary);
+
+
 let completedStages = 0;
 
 if (stages.before.length > 0) completedStages++;
@@ -349,7 +421,9 @@ if (stages.after.length > 0) completedStages++;
 const progressPercent = completedStages * 33;
 
 const progressTitle = document.createElement("div");
-progressTitle.innerHTML = `<strong>Progress: ${progressPercent}%</strong>`;
+progressTitle.innerHTML = `
+  <strong>Progress: ${progressPercent}% (${completedStages}/3 stages)</strong>
+`;
 progressTitle.style.marginBottom = "6px";
 
 mediaContainer.appendChild(progressTitle);
@@ -403,6 +477,16 @@ title.innerHTML = `<strong>${stageIcons[stage]} ${stage.toUpperCase()} REPAIR</s
 
   const img = document.createElement("img");
   img.src = media.url;
+
+  img.style.cursor = "pointer";
+
+img.addEventListener("click", () => {
+  const modal = document.getElementById("imageModal");
+  const modalImg = document.getElementById("modalImage");
+
+  modal.style.display = "block";
+  modalImg.src = media.url;
+});
   img.style.width = "120px";
   img.style.borderRadius = "6px";
 
@@ -663,7 +747,7 @@ if (!stage) {
 
 // ❌ prevent skipping forward
 if (selectedIndex > currentIndex + 1) {
-  alert(`You must complete "${currentStep}" stage first.`);
+  alert(`You cannot skip stages.`);
   return;
 }
 
@@ -1002,7 +1086,20 @@ return;
 }
 
 
+const modal = document.getElementById("imageModal");
+const closeBtn = document.querySelector(".image-close");
 
+if (closeBtn) {
+  closeBtn.onclick = () => {
+    modal.style.display = "none";
+  };
+}
+
+window.onclick = (event) => {
+  if (event.target === modal) {
+    modal.style.display = "none";
+  }
+};
 
 //logout
 
@@ -1012,3 +1109,4 @@ logoutBtn.addEventListener("click", async () => {
   await signOut(auth);
   window.location.href = "index.html";
 });
+

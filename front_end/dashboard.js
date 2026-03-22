@@ -820,6 +820,17 @@ for (const stage of ["before","during","after"]) {
 
     const img = document.createElement("img");
     img.src = url;
+
+    img.style.cursor = "pointer";
+
+img.addEventListener("click", () => {
+  const modal = document.getElementById("imageModal");
+  const modalImg = document.getElementById("modalImage");
+
+  modal.style.display = "block";
+  modalImg.src = url;
+});
+
     img.style.width = "120px";
     img.style.marginRight = "6px";
     img.style.borderRadius = "6px";
@@ -834,3 +845,18 @@ for (const stage of ["before","during","after"]) {
     console.log("Media load failed");
   }
 }
+
+const modal = document.getElementById("imageModal");
+const closeBtn = document.querySelector(".image-close");
+
+if (closeBtn) {
+  closeBtn.onclick = () => {
+    modal.style.display = "none";
+  };
+}
+
+window.onclick = (event) => {
+  if (event.target === modal) {
+    modal.style.display = "none";
+  }
+};
