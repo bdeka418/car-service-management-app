@@ -75,7 +75,7 @@ onAuthStateChanged(auth, async (user) => {
 
 //role protection
   if (userSnap.data().role !== "service_center") {
-    alert("Access denied");
+   showToast("Access denied", "error");
     await signOut(auth);
     window.location.href = "index.html";
     return;
@@ -146,9 +146,15 @@ async function renderBoard() {
   docs.push(...assignedDocs);
 
   if (docs.length === 0) {
-    serviceList.innerHTML = "<li>No active services available</li>";
-    return;
-  }
+  serviceList.innerHTML = `
+    <li>
+      <div class="empty-state">
+        🚗 No active services available
+      </div>
+    </li>
+  `;
+  return;
+}
 
   await Promise.all(docs.map(d => renderServiceDoc(d)));
 
@@ -179,24 +185,37 @@ const unsub2 = onSnapshot(assignedQuery, (snapshot) => {
   const data = d.data();
   const currentStep = data.currentStep || "before";
   const serviceId = d.id;
-const activityLog = await buildServiceActivityLog(serviceId, data);
+  console.log("Rendering:", serviceId, data);
+let activityLog = "";
+
+try {
+  activityLog = await buildServiceActivityLog(serviceId, data);
+} catch (err) {
+  console.log("Activity log failed:", err);
+  activityLog = "<div>Activity log unavailable</div>";
+}
 
 // CHECK STAGE COMPLETION
-const mediaSnap = await getDocs(
-  collection(db, "services", serviceId, "media")
-);
-
 let hasBefore = false;
 let hasDuring = false;
 let hasAfter = false;
 
-mediaSnap.forEach(doc => {
-  const stage = doc.data().stage;
+try {
+  const mediaSnap = await getDocs(
+    collection(db, "services", serviceId, "media")
+  );
 
-  if (stage === "before") hasBefore = true;
-  if (stage === "during") hasDuring = true;
-  if (stage === "after") hasAfter = true;
-});
+  mediaSnap.forEach(doc => {
+    const stage = doc.data().stage;
+
+    if (stage === "before") hasBefore = true;
+    if (stage === "during") hasDuring = true;
+    if (stage === "after") hasAfter = true;
+  });
+
+} catch (err) {
+  console.log("Media check blocked:", err);
+}
 
 const canComplete = hasBefore && hasDuring && hasAfter;
 
@@ -344,7 +363,11 @@ if (
   data.serviceStatus === "assigned" &&
   data.hasMedia
 ) {
+ try {
   await loadServiceMedia(serviceId);
+} catch (error) {
+  console.log("Media load blocked:", error);
+}
 }
 }
   
@@ -548,7 +571,7 @@ loadServiceMedia(serviceId);
   } catch (err) {
 
     console.error("Delete failed:", err);
-    alert("Failed to delete image");
+    showToast("Failed to delete image", "error");
 
   }
 
@@ -581,34 +604,33 @@ async function buildServiceActivityLog(serviceId, data) {
     events.push({ time: data.cancelledAt, text: "Service cancelled" });
   }
 
-  try {
+  let mediaSnap;
 
-    const mediaSnap = await getDocs(
-      collection(db, "services", serviceId, "media")
-    );
+try {
+  mediaSnap = await getDocs(
+    collection(db, "services", serviceId, "media")
+  );
 
-    mediaSnap.forEach((doc) => {
+  mediaSnap.forEach((doc) => {
+    const m = doc.data();
 
-      const m = doc.data();
+    if (!m.createdAt) return;
 
-      if (!m.createdAt) return;
+    let label = "Photo uploaded";
 
-      let label = "Photo uploaded";
+    if (m.stage === "before") label = "Before repair photo uploaded";
+    if (m.stage === "during") label = "During repair photo uploaded";
+    if (m.stage === "after") label = "After repair photo uploaded";
 
-      if (m.stage === "before") label = "Before repair photo uploaded";
-      if (m.stage === "during") label = "During repair photo uploaded";
-      if (m.stage === "after") label = "After repair photo uploaded";
-
-      events.push({
-        time: m.createdAt,
-        text: label
-      });
-
+    events.push({
+      time: m.createdAt,
+      text: label
     });
+  });
 
-  } catch (e) {
-    console.log("Media log skipped");
-  }
+} catch (e) {
+  console.log("Media log skipped (permission)");
+}
 
   events.sort((a,b)=>a.time.seconds - b.time.seconds);
 
@@ -687,6 +709,15 @@ stages[stage].forEach((media) => {
   img.style.width = "120px";
   img.style.borderRadius = "6px";
 
+  img.style.cursor = "pointer";
+
+img.addEventListener("click", () => {
+  const modal = document.getElementById("imageModal");
+  const modalImg = document.getElementById("modalImage");
+
+  modal.style.display = "block";
+  modalImg.src = media.url;
+});
   wrapper.appendChild(img);
 
   mediaContainer.appendChild(wrapper);
@@ -741,19 +772,19 @@ const selectedIndex = stageOrder.indexOf(stage);
 
 // ❌ no stage selected
 if (!stage) {
-  alert("Please select the repair stage before uploading.");
+  showToast ("Please select the repair stage before uploading.", "error");
   return;
 }
 
 // ❌ prevent skipping forward
 if (selectedIndex > currentIndex + 1) {
-  alert(`You cannot skip stages.`);
+  showToast(`You cannot skip stages.`, "error");
   return;
 }
 
 // ❌ prevent going backward
 if (selectedIndex < currentIndex) {
-  alert("You cannot upload previous stage images.");
+  showToast("You cannot upload previous stage images.", "error");
   return;
 }
 
@@ -770,7 +801,7 @@ mediaSnap.forEach((doc) => {
   if (m.stage === stage) stageCount++;
 });
 if (stageCount >= 3) {
-  alert("Maximum 3 photos allowed for this stage.");
+  showToast("Maximum 3 photos allowed for this stage.", "error");
   return;
 }
 
@@ -780,7 +811,7 @@ if (stageCount >= 3) {
   const file = fileInput.files[0];
 
   if (!file) {
-    alert("Please select a file first");
+    showToast("Please select a file first", "warning");
     return;
   }
 progressEl.innerText = "Starting upload...";
@@ -882,17 +913,17 @@ loadServiceMedia(serviceId);
   });
 
   if (stages.before < 1) {
-  alert("Upload at least one BEFORE repair photo.");
+  showToast("Upload at least one BEFORE repair photo.", "warning");
   return;
 }
 
 if (stages.during < 1) {
-  alert("Upload at least one DURING repair photo.");
+  showToast("Upload at least one DURING repair photo.", "warning");
   return;
 }
 
 if (stages.after < 1) {
-  alert("Upload at least one AFTER repair photo.");
+  showToast("Upload at least one AFTER repair photo.", "warning");
   return;
 }
 
@@ -908,7 +939,7 @@ return;
   const reason = prompt("Enter reason for cancelling this service:");
 
   if (!reason) {
-    alert("Cancellation requires a reason.");
+    showToast("Cancellation requires a reason.", "warning");
     return;
   }
 
@@ -974,9 +1005,18 @@ return;
 
   const renderServices = async (snap) => {
 
-     if (snap.empty) {
-    return;
+    if (snap.empty) {
+  if (snap.query._query.filters[0].value === "completed") {
+    completedServiceList.innerHTML = `
+      <li><div class="empty-state">No completed services</div></li>
+    `;
+  } else {
+    cancelledServiceList.innerHTML = `
+      <li><div class="empty-state">No cancelled services</div></li>
+    `;
   }
+  return;
+}
 
     for (const d of snap.docs) {
 
@@ -1107,6 +1147,28 @@ const logoutBtn = document.getElementById("logoutBtn");
 
 logoutBtn.addEventListener("click", async () => {
   await signOut(auth);
+  showToast("Logged out successfully", "success");
   window.location.href = "index.html";
 });
 
+//toast function
+function showToast(message, type = "success") {
+  const container = document.getElementById("toastContainer");
+
+  const toast = document.createElement("div");
+  toast.classList.add("toast", `toast-${type}`);
+
+  // 🔥 ICON LOGIC
+  let icon = "";
+  if (type === "success") icon = "✔";
+  if (type === "error") icon = "✖";
+  if (type === "warning") icon = "⚠";
+
+  toast.innerHTML = `${icon} ${message}`;
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
+}

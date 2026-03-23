@@ -9,30 +9,39 @@
 
 
 <body>
-  <h2>Dashboard</h2>
+  <div class="top-bar">
+  <div>
+    <h2>Dashboard</h2>
+    <p id="welcomeText"></p>
+  </div>
 
-  <p id="welcomeText"></p>
+  <button id="logoutBtn">Logout</button>
+</div>
 
   <!-- ADD CAR -->
-<h3>Add Car</h3>
+<div class="form-card">
+  <h3>Add Car</h3>
 
-<input type="text" id="carNumber" placeholder="Car Number"><br><br>
-<input type="text" id="brand" placeholder="Brand"><br><br>
-<input type="text" id="model" placeholder="Model"><br><br>
-<input type="text" id="colour" placeholder="Colour"><br><br>
+  <input type="text" id="carNumber" placeholder="Car Number">
+  <input type="text" id="brand" placeholder="Brand">
+  <input type="text" id="model" placeholder="Model">
+  <input type="text" id="colour" placeholder="Colour">
 
-<button id="addCarBtn">Add Car</button>
-
+  <button id="addCarBtn">Add Car</button>
+</div>
 <hr>
 
   <!-- services -->
+  <div class="form-card">
   <h3>Create Service</h3>
-  
-  <select id="carSelect"></select><br><br>
-  <textarea id="serviceNotes" placeholder="Service notes"></textarea><br><br>
+
+  <select id="carSelect"></select>
+  <textarea id="serviceNotes" placeholder="Service notes"></textarea>
+
   <button id="createServiceBtn">Create Service</button>
+</div>
   
-<button id="logoutBtn">Logout</button>
+
   
   <hr>
   
@@ -51,6 +60,8 @@
   <span class="image-close">&times;</span>
   <img class="image-modal-content" id="modalImage">
 </div>
+
+<div id="toastContainer" class="toast-container"></div>
 
   <script type="module" src="dashboard.js"></script>
 </body>

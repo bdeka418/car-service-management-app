@@ -66,7 +66,7 @@ onAuthStateChanged(auth, async (user) => {
 
     //role guard
  if (currentRole !== "customer") {
-    alert("Access denied");
+    showToast("Access denied", "error");
     window.location.href = "index.html";
     return;
   }
@@ -85,6 +85,7 @@ listenToCustomerServices();
 // 🚪 Logout
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   await signOut(auth);
+  showToast("Logged out successfully", "success");
   window.location.href = "index.html";
 });
 
@@ -106,7 +107,7 @@ addCarBtn.addEventListener("click", async () => {
 const existingCars = await getDocs(carCheckQuery);
 
 if (!existingCars.empty) {
-  alert("This car is already registered");
+  showToast("This car is already registered", "success");
   return;
 }
 
@@ -116,7 +117,7 @@ if (!existingCars.empty) {
     !model.value.trim() ||
     !colour.value.trim()
   ) {
-    alert("Fill all car details");
+    showToast("Fill all car details", "warning");
     return;
   }
   //disable button the user is known or logged in
@@ -140,7 +141,7 @@ createServiceBtn.disabled = true;
     model.value = "";
     colour.value = "";
 
-    alert("Car added successfully");
+    showToast("Car added successfully", "success");
 
     carNumber.value = "";
     brand.value = "";
@@ -151,7 +152,7 @@ createServiceBtn.disabled = true;
 
   } catch (e) {
     console.error(e);
-    alert("Failed to add car");
+    showToast("Failed to add car", "error");
    } finally {
     addCarBtn.disabled = false;
     createServiceBtn.disabled = false;
@@ -211,12 +212,12 @@ async function loadCarOptions() {
 // ------CREATE SERVICE----
 createServiceBtn.addEventListener("click", async () => {
   if (!carSelect.value) {
-    alert("Please register a car before creating a service");
+    showToast("Please register a car before creating a service", "warning");
     return;
   }
 
   if (!serviceNotes.value.trim()) {
-    alert("Please add service notes");
+    showToast("Please add service notes", "warning");
     return;
   }
 
@@ -232,7 +233,7 @@ createServiceBtn.addEventListener("click", async () => {
   const activeSnap = await getDocs(activeServiceQuery);
 
   if (!activeSnap.empty) {
-    alert("This car is already under service. Please wait until it is completed.");
+    showToast("This car is already under service. Please wait until it is completed.", "warning");
      serviceNotes.value = "";
     return;
   }
@@ -249,7 +250,7 @@ createServiceBtn.addEventListener("click", async () => {
       createdAt: serverTimestamp(),
       startedAt: serverTimestamp()
     });
-    alert("Service created");
+    showToast("Service created", "success");
 
     serviceNotes.value = "";
     carSelect.selectedIndex = 0;
@@ -257,7 +258,7 @@ createServiceBtn.addEventListener("click", async () => {
    // listenToCustomerServices();
 
   } catch {
-    alert("Failed to create service");
+    showToast("Failed to create service", "error");
   }
 });
 
@@ -503,7 +504,11 @@ function buildStageProgress(stages) {
     serviceHistoryList.innerHTML = "";
 
     if (snap.empty) {
-      serviceList.innerHTML = "<li>No services yet</li>";
+      activeServiceList.innerHTML = `
+  <li>
+    <div class="empty-state">No active services</div>
+  </li>
+`;
       return;
     }
 
@@ -541,9 +546,21 @@ function buildStageProgress(stages) {
 
 
    for (const data of servicesArray) {
-const activityLog = await buildServiceActivityLog(data.id, data);
-  const li = document.createElement("li");
+let activityLog = "";
+
+try {
+  activityLog = await buildServiceActivityLog(data.id, data);
+} catch (err) {
+  console.log("Activity log failed");
+}
+ let li = document.getElementById(`service-${data.id}`);
+
+if (!li) {
+  li = document.createElement("li");
   li.id = `service-${data.id}`;
+} else {
+  li.innerHTML = ""; // clear old content
+}
 
   const carData = carDataCache[data.carId];
 
@@ -599,7 +616,6 @@ ${activityLog}
 </div>
 `;
 
-  const existing = document.getElementById(`service-${data.id}`);
 
   if (data.serviceStatus === "completed" || data.serviceStatus === "cancelled") {
 
@@ -633,7 +649,7 @@ async function cancelService(serviceId) {
    const reason = prompt("Enter reason for cancelling this service:");
 
   if (!reason) {
-    alert("Cancellation requires a reason");
+    showToast("Cancellation requires a reason", "warning");
     return;
   }
 
@@ -647,12 +663,12 @@ async function cancelService(serviceId) {
       cancelledAt: serverTimestamp()
     });
 
-    alert("Service request cancelled");
+    showToast("Service request cancelled", "success");
 
   } catch (err) {
 
     console.error(err);
-    alert("Failed to cancel service");
+    showToast("Failed to cancel service", "error");
 
   }
 }
@@ -671,9 +687,15 @@ async function loadServiceHistory(carId) {
   const snap = await getDocs(q);
 
   if (snap.empty) {
-    historyList.innerHTML = "<li>No service history</li>";
-    return;
-  }
+  activeServiceList.innerHTML = `
+    <li>
+      <div class="empty-state">
+        🚗 No active services yet
+      </div>
+    </li>
+  `;
+  return;
+}
 
   const services = snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
@@ -806,7 +828,7 @@ const stageStatus = {
   after: stages.after.length > 0
 };
 
-mediaContainer.innerHTML += buildStageProgress(stageStatus);
+mediaContainer.innerHTML = buildStageProgress(stageStatus);
 
 for (const stage of ["before","during","after"]) {
 
@@ -860,3 +882,26 @@ window.onclick = (event) => {
     modal.style.display = "none";
   }
 };
+
+//toast function
+
+function showToast(message, type = "success") {
+  const container = document.getElementById("toastContainer");
+
+  const toast = document.createElement("div");
+  toast.classList.add("toast", `toast-${type}`);
+
+  // 🔥 ICON LOGIC
+  let icon = "";
+  if (type === "success") icon = "✔";
+  if (type === "error") icon = "✖";
+  if (type === "warning") icon = "⚠";
+
+  toast.innerHTML = `${icon} ${message}`;
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
+}

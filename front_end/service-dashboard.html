@@ -7,26 +7,38 @@
     <title>service-center dashboard</title>
 </head>
 <body>
-     <h2>Service Center</h2>
-     <p id="welcomeText"></p>
+     <div class="top-bar">
+  <div>
+    <h2>Service Center</h2>
+    <p id="welcomeText"></p>
+  </div>
 
   <button id="logoutBtn">Logout</button>
+</div>
 
-  <h3>Active Services</h3>
+  <div class="section-card">
+  <div class="section-header">Active Services</div>
   <ul id="serviceList"></ul>
+</div>
 
-<hr>
-  <h2>Completed Services</h2>
-<ul id="completedServiceList"></ul>
+<div class="section-card">
+  <div class="section-header">Completed Services</div>
+  <ul id="completedServiceList"></ul>
+</div>
 
-<hr>
-<h2>Cancelled Services</h2>
-<ul id="cancelledServiceList"></ul>
+<div class="section-card">
+  <div class="section-header">Cancelled Services</div>
+  <ul id="cancelledServiceList"></ul>
+</div>
 
 <div id="imageModal" class="image-modal">
   <span class="image-close">&times;</span>
   <img class="image-modal-content" id="modalImage">
 </div>
+
+<div id="toastContainer" class="toast-container"></div>
+
+
   <script type="module" src="service-dashboard.js"></script>
 </body>
 </html>

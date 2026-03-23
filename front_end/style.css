@@ -1,93 +1,176 @@
+:root {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+
+  --success: #16a34a;
+  --danger: #dc2626;
+  --warning: #d97706;
+
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --border: #e5e7eb;
+
+  --text: #111827;
+  --text-muted: #6b7280;
+
+  --radius: 12px;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 10px 24px rgba(0,0,0,0.1);
+
+  --transition: 0.2s ease;
+}
 /* ===== GLOBAL ===== */
 body {
-  font-family: Arial, sans-serif;
-  background: #f5f7fa;
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+
+  color: var(--text);
+}
+
+* {
+  box-sizing: border-box;
+}
+/* ===== TOP BAR FIX ===== */
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.top-bar h2 {
   margin: 0;
-  padding: 20px;
+}
+
+#logoutBtn {
+  background: #ef4444;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  height: fit-content;
+}
+
+/* ===== REMOVE LIST DEFAULT STYLES ===== */
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+li {
+  list-style: none;
+  margin-bottom: 15px;
 }
 
 /* ===== SERVICE CARD ===== */
 .service-tile {
-  background: #ffffff;
-  border-radius: 10px;
-  padding: 15px;
-  margin-bottom: 15px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 18px;
+
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+
+  transition: var(--transition);
+}
+
+.service-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
 }
 
 /* ===== HEADER ===== */
 .service-header {
-  font-size: 16px;
-  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
 }
 
 /* ===== NOTES ===== */
 .service-notes {
   font-size: 13px;
-  color: #555;
-  margin-bottom: 8px;
+  color: #666;
+
 }
 
 /* ===== ACTION BUTTONS ===== */
-.service-actions button {
-  margin: 5px 5px 0 0;
-  padding: 6px 10px;
+.service-actions button,
+.form-card button,
+#logoutBtn {
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  font-size: 13px;
+  transition: var(--transition);
 }
 
-/* Upload button */
-button[data-action="upload"] {
-  background: #007bff;
+/* Primary */
+button[data-action="assign"],
+button[data-action="upload"],
+.form-card button {
+  background: var(--primary);
   color: white;
 }
 
-/* Complete button */
+button[data-action="assign"]:hover,
+button[data-action="upload"]:hover,
+.form-card button:hover {
+  background: var(--primary-hover);
+}
+
+/* Danger */
+button[data-action="cancel"],
+#logoutBtn {
+  background: var(--danger);
+  color: white;
+}
+
+/* Success */
 button[data-action="complete"] {
-  background: #28a745;
+  background: var(--success);
   color: white;
-}
-
-/* Cancel button */
-button[data-action="cancel"] {
-  background: #dc3545;
-  color: white;
-}
-
-/* Disabled state */
-button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
 }
 
 /* ===== MEDIA IMAGES ===== */
 .service-media img {
   margin-top: 6px;
+  border-radius: 6px;
 }
 
 /* ===== STAGE SUMMARY ===== */
 .stage-summary {
   margin-bottom: 8px;
   font-size: 13px;
+  margin-bottom: 10px;
 }
 
 /* ===== PROGRESS BAR ===== */
 .progress-bar {
-  width: 200px;
-  height: 6px;
-  background: #ddd;
-  border-radius: 4px;
-  margin-bottom: 8px;
+  width: 100%;
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 .progress-fill {
-  height: 6px;
-  background: #4CAF50;
-  border-radius: 4px;
+  height: 8px;
+  background: linear-gradient(90deg, #4CAF50, #66bb6a);
+  border-radius: 6px;
   transition: width 0.5s ease;
 }
+
 
 /* ===== SELECT DROPDOWN ===== */
 .media-stage {
@@ -96,10 +179,6 @@ button:disabled {
   margin-top: 5px;
 }
 
-/* ===== STAGE BADGES ===== */
-.stage-summary {
-  margin-bottom: 10px;
-}
 
 .stage-badge {
   display: inline-block;
@@ -154,4 +233,294 @@ button:disabled {
   color: white;
   font-size: 30px;
   cursor: pointer;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+
+  body {
+    padding: 10px;
+  }
+
+  .service-tile {
+    padding: 12px;
+  }
+
+  .service-header {
+    font-size: 14px;
+  }
+
+  .service-notes {
+    font-size: 13px;
+  }
+
+  /* buttons stack */
+  .service-actions {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .service-actions button {
+    width: 100%;
+    margin: 5px 0;
+  }
+
+  /* dropdown + input full width */
+  .media-stage,
+  .media-input {
+    width: 100%;
+    margin-top: 6px;
+  }
+
+  /* images responsive */
+  .service-media img {
+    width: 100%;
+    max-width: 140px;
+  }
+
+  /* progress bar full width */
+  .progress-bar {
+    width: 100%;
+  }
+
+  /* stage badges wrap */
+  .stage-badge {
+    display: block;
+    margin-bottom: 5px;
+  }
+}
+
+.service-actions button:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+  transition: 0.2s;
+}
+
+.service-tile {
+  transition: 0.2s ease;
+}
+
+.service-tile:hover {
+  transform: translateY(-2px);
+}
+
+
+/* Image grid inside each stage */
+.stage-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Individual image */
+.stage-images img {
+  width: 110px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.stage-container {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+   margin-bottom: 12px;
+   font-size: 14px;
+  color: #444;
+}
+
+/* ===== TOAST ===== */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.toast {
+  min-width: 220px;
+  margin-bottom: 10px;
+  padding: 10px 15px;
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  gap: 8px;   /* spacing between icon and text */
+}
+
+/* types */
+.toast-success {
+  background: #28a745;
+}
+
+.toast-error {
+  background: #dc3545;
+}
+
+.toast-warning {
+  background: #ff9800;
+}
+
+/* animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== ======= ===== */
+/* ===== SECTION CARD ===== */
+.section-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 22px;
+
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+
+  transition: var(--transition);
+}
+
+.section-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* ===== SECTION HEADER ===== */
+
+.section-header {
+  font-size: 17px;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 10px;
+  border-radius: 05px;
+  position: sticky;
+  top: 0;
+  background: white;
+  padding: 8px 5px;
+  z-index: 5;
+  border-bottom: 1px solid #eee;
+}
+.section-card {
+  overflow: hidden;
+}
+.section-card:nth-child(even) {
+  background: #fafafa;
+}
+
+
+/* ===== FORM CARD ===== */
+.form-card {
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  
+}
+
+
+/* ===== INPUT FIELDS (PRO STYLE) ===== */
+input,
+select {
+  width: 100%;
+  padding: 12px 14px;
+
+  box-sizing: border-box;   /* 🔥 THIS IS THE FIX */
+
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+
+  font-size: 14px;
+  color: #111827;
+
+  transition: all 0.25s ease;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+}
+textarea {
+  width: 100% !important;   /* 🔥 force full width */
+  display: block;
+
+  padding: 8px 10px;
+  min-height: 80px;
+
+  box-sizing: border-box;   /* VERY IMPORTANT */
+}
+
+/* focus effect */
+input:focus,
+select:focus,
+textarea:focus {
+  background: #ffffff;
+  border-color: #2563eb;
+
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  outline: none;
+}
+
+/* placeholder */
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af;
+  line-height: 1.4;
+}
+
+/* spacing fix */
+.form-card input,
+.form-card select,
+.form-card textarea {
+  margin-bottom: 14px;
+  width: 100%;
+}
+
+/* headings */
+h2, h3 {
+  margin-bottom: 10px;
+    margin-top: 20px;
+}
+
+/* ===== EMPTY STATE ===== */
+.empty-state {
+  text-align: center;
+  padding: 20px;
+  background: #fafafa;
+  border-radius: 10px;
+  color: #777;
+  font-size: 14px;
+  border: 1px dashed #ddd;
+}
+.section-card ul {
+  min-height: 50px;
+  padding-top: 10px;
+}
+.form-card {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.form-card button {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.form-card button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.3);
+}
+/* ===== typography ===== */
+
+h2 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 16px;
+  font-weight: 600;
 }

@@ -1,26 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>car_service_app</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auth - Car Service</title>
+<link rel="stylesheet" href="auth.css">
 </head>
+
 <body>
-    <h2>Signup</h2>
-    <input type="text" id= "name" placeholder="Name"><br><br>
-    <input type="email" id = "email" placeholder="Email"><br><br>
-    <input type="password" id = "password" placeholder = "password"><br><br>
-    <button id="signupBtn"> Sign Up </button>
 
-    <script type="module" src = "script.js"></script>
+<div class="auth-container">
 
-    <!-- signin logic -->
+  <div class="auth-card">
 
-    <h2>Login</h2>
+    <!-- LOGIN -->
+    <div id="loginSection" class="active">
+      <h2>Welcome Back</h2>
+      <p class="sub">Login to continue</p>
 
-    <input type="email" id = "loginEmail" placeholder = "Email"><br><br>
-    <input type="password" id = "loginPassword" placeholder = "Password"><br><br>
+      <input type="email" id="loginEmail" placeholder="Email">
+      <input type="password" id="loginPassword" placeholder="Password">
+    
 
-    <button id = "loginBtn">Login</button>
+      <button id="loginBtn">Login</button>
+
+      <div class="auth-links">
+        <span id="showRegister">Register now</span>
+        <span id="showForgot">Forgot password?</span>
+      </div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="registerSection" class="hidden">
+      <h2>Create Account</h2>
+
+      <input type="text" id="name" placeholder="Full Name">
+      <input type="email" id="email" placeholder="Email">
+      <input type="password" id="password" placeholder="Password">
+    <input type="password" id="confirmPassword" placeholder="Confirm Password">
+      <button id="signupBtn">Sign Up</button>
+
+      <div class="auth-links center">
+        <span id="showLogin">Back to Login</span>
+      </div>
+    </div>
+
+    <!-- FORGOT PASSWORD -->
+    <div id="forgotSection" class="hidden">
+      <h2>Reset Password</h2>
+
+      <input type="email" id="resetEmail" placeholder="Enter your email">
+
+      <button id="resetBtn">Send Reset Link</button>
+
+      <div class="auth-links center">
+        <span id="backToLogin">Back to Login</span>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+<div id="toast-container"></div>
+<script type="module" src="script.js"></script>
+
 </body>
 </html>
