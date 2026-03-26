@@ -15,11 +15,14 @@
 
     <!-- LOGIN -->
     <div id="loginSection" class="active">
-      <h2>Welcome Back</h2>
+      <h2>Welcome Back!</h2>
       <p class="sub">Login to continue</p>
 
       <input type="email" id="loginEmail" placeholder="Email">
-      <input type="password" id="loginPassword" placeholder="Password">
+      <div class="password-field">
+  <input type="password" id="loginPassword" placeholder="Password">
+  <span class="toggle-password" data-target="loginPassword">👁️</span>
+</div>
     
 
       <button id="loginBtn">Login</button>
@@ -36,8 +39,15 @@
 
       <input type="text" id="name" placeholder="Full Name">
       <input type="email" id="email" placeholder="Email">
-      <input type="password" id="password" placeholder="Password">
-    <input type="password" id="confirmPassword" placeholder="Confirm Password">
+     <div class="password-field">
+  <input type="password" id="password" placeholder="Password">
+  <span class="toggle-password" data-target="password">👁️</span>
+</div>
+
+<div class="password-field">
+  <input type="password" id="confirmPassword" placeholder="Confirm Password">
+  <span class="toggle-password" data-target="confirmPassword">👁️</span>
+</div>
       <button id="signupBtn">Sign Up</button>
 
       <div class="auth-links center">

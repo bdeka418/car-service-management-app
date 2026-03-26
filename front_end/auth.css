@@ -1,7 +1,7 @@
 body {
   margin: 0;
   font-family: 'Inter', sans-serif;
-  background:linear-gradient(135deg, #eef2ff, #f8fafc);
+  background:linear-gradient(135deg, #878ea3, #b4cbe3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -17,7 +17,7 @@ body {
   background: white;
   padding: 30px;
   border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 h2 {
@@ -35,11 +35,12 @@ h2 {
 }
 
 input {
-  width: 90%;
-  padding: 10px;
+  width: 100%;
+  height: 44px;              /* ✅ FIXED HEIGHT */
+  padding: 0 12px;           /* remove vertical padding */
+  margin: 8px 0;                /* add vertical margin */
 
-  margin-bottom: 12px;
-
+  
   border-radius: 10px;
   border: 1px solid #e2e8f0;
 
@@ -48,9 +49,8 @@ input {
   font-size: 14px;
   color: #0f172a;
 
-  transition: all 0.25s ease;
+  box-sizing: border-box;
 }
-
 input:focus {
   border-color: #2563eb;
 
@@ -63,7 +63,7 @@ input:focus {
 button {
   width: 100%;
   padding: 12px;
-
+  margin-top: 10px;
   background: linear-gradient(135deg, #2563eb, #3b82f6);
 
   color: white;
@@ -124,7 +124,7 @@ button:hover {
 }
 
 .auth-card {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(232, 223, 223, 0.85);
   backdrop-filter: blur(10px);
 
   padding: 30px;
@@ -134,7 +134,7 @@ button:hover {
 
   transition: all 0.3s ease;
 
-  border: 1px solid rgba(255,255,255,0.4);
+  border: 1px solid rgba(102 95 95 / 23%);
 }
 
 .auth-card:hover {
@@ -221,3 +221,36 @@ button:hover {
 .toast.success { background: #16a34a; }
 .toast.error { background: #dc2626; }
 .toast.info { background: #2563eb; }
+
+/* ===== PASSWORD TOGGLE ===== */
+
+.password-field {
+  position: relative;
+ 
+}
+
+.password-field input {
+  padding-right: 40px; /* space for icon */
+  margin-bottom: 8
+}
+
+.toggle-password {
+  position: absolute;
+  right: 12px;
+  top: 0;
+  height: 100%;
+
+  display: flex;
+  align-items: center;   /* ✅ PERFECT CENTER */
+  justify-content: center;
+
+  cursor: pointer;
+  font-size: 16px;
+  color: #64748b;
+
+  transition: all 0.2s ease;
+}
+
+.toggle-password:hover {
+  color: #2563eb;
+}

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Manage Services</title>
+   <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<h2>Manage Services</h2>
+
+<div class="navbar">
+  <a href="service-dashboard.html">Dashboard</a>
+  <a href="manage_service.html" class="active">Manage Services</a>
+</div>
+
+<h3>Add Mechanic</h3>
+
+<input type="text" id="mechName" placeholder="Mechanic Name" />
+<input type="email" id="mechEmail" placeholder="Mechanic Email" />
+
+<button onclick="addMechanic()">Add Mechanic</button>
+
+<hr>
+
+
+<h3>Active Services</h3>
+
+<div id="servicesContainer">
+  Loading services...
+</div>
+
+<script type="module" src="service.js"></script>
+
+</body>
+</html>

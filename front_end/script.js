@@ -63,6 +63,14 @@ if (password !== confirmPassword) {
   return;
 }
   try {
+
+    // 🔐 STEP 1: UNIQUE EMAIL LOCK
+  const emailRef = doc(db, "unique_emails", email);
+
+  await setDoc(emailRef, {
+    createdAt: serverTimestamp()
+  });
+
     // 1️⃣ Create user in Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(
       auth,
@@ -229,3 +237,21 @@ document.getElementById("resetBtn").addEventListener("click", async () => {
     }
   }
 });
+
+// ===== PASSWORD TOGGLE =====
+
+document.querySelectorAll(".toggle-password").forEach(icon => {
+  icon.addEventListener("click", () => {
+    const inputId = icon.getAttribute("data-target");
+    const input = document.getElementById(inputId);
+
+    if (input.type === "password") {
+      input.type = "text";
+      icon.textContent = "🙈"; // hide icon
+    } else {
+      input.type = "password";
+      icon.textContent = "👁"; // show icon
+    }
+  });
+});
+
