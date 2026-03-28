@@ -6,6 +6,10 @@ console.log("service.js loaded");
 
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 
+import { getFunctions, httpsCallable } 
+from "https://www.gstatic.com/firebasejs/12.8.0/firebase-functions.js";
+
+let currentUser = null;
 
 // 🔐 Protect page + role check
 onAuthStateChanged(auth, async (user) => {
@@ -15,27 +19,41 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
+  currentUser = user;
+
   const userRef = doc(db, "users", user.uid);
   const userSnap = await getDoc(userRef);
 
-  const role = userSnap.data().role;
-
-if (!userSnap.exists()) {
+  if (!userSnap.exists()) {
   console.log("User doc missing");
   window.location.href = "index.html";
   return;
 }
 
-  if (role !== "service_center") {
-    window.location.href = "dashboard.html";
-    return;
-  }
+const role = userSnap.data().role;
+
+console.log("ROLE:", role);
+// 🔥 Password warning (non-blocking)
+if (userSnap.data().mustResetPassword) {
+  showToast("Please set your password using email link", "warning");
+}
+
+// 🔥 Role-based redirect
+if (role !== "service_center") {
+  window.location.href = "index.html";
+  return;
+}
 
   console.log("Authorized service center:", user.email);
 
   // ✅ NOW SAFE TO USE auth.currentUser
   initializePage(user);   // 👈 call your main logic here
 });
+
+const functions = getFunctions(undefined, "asia-south1");
+const createMechanic = httpsCallable(functions, "createMechanicAndSendEmail");
+
+
 async function createJobCard( serviceId, customerId, ownerId, carNumber, notes, mechanicId){
 
   console.log("ACTUAL jobCard:", {
@@ -84,61 +102,63 @@ loadServices(user);
   // show UI
 }
 
+//toast function
+function showToast(message, type = "info") {
+  alert(message); // simple fallback for now
+}
 //add mechanic logic
 window.addMechanic = async function () {
 
-  // ======== prevent spam clicks =============
-   const btn = document.querySelector("button");
-  btn.disabled = true; 
-
+  const btn = document.querySelector("button");
+  btn.disabled = true;
 
   const name = document.getElementById("mechName").value;
   const email = document.getElementById("mechEmail").value;
 
   if (!name || !email) {
-    console.log("Fill all fields");
+    showToast("Fill all fields", "error");
+    btn.disabled = false;
     return;
   }
 
-
-
   try {
-// 🔐 UNIQUE EMAIL LOCK
-const emailRef = doc(db, "unique_emails", email.toLowerCase());
 
-try {
-  await setDoc(emailRef, {
-    createdAt: serverTimestamp(),
-    serviceCenterId: auth.currentUser.uid
-  });
+    if (!currentUser) {
+      showToast("Auth not ready. Please wait...", "error");
+      btn.disabled = false;
+      return;
+    }
 
-} catch (error) {
-  console.log("Duplicate email blocked:", error);
-  alert("Mechanic with this email already exists");
-  btn.disabled = false;
-  return;
-}
-
-
-  
-    await addDoc(collection(db, "users"), {
-      name: name,
+    await createMechanic({
+      name,
       email,
-      role: "mechanic",
-      serviceCenterId: auth.currentUser.uid,
-      createdAt: serverTimestamp()
+      serviceCenterId: currentUser.uid
     });
 
-    console.log("Mechanic added");
+    showToast("Mechanic added & email sent", "success");
 
-document.getElementById("mechName").value = "";
-document.getElementById("mechEmail").value = "";
+    document.getElementById("mechName").value = "";
+    document.getElementById("mechEmail").value = "";
+
   } catch (error) {
-    console.error("Error adding mechanic:", error);
-  }
-  btn.disabled = false; 
-};
 
+    console.error("🔥 FULL ERROR OBJECT:", error);
+    console.error("🔥 ERROR MESSAGE:", error.message);
+    console.error("🔥 ERROR CODE:", error.code);
+    console.error("🔥 ERROR DETAILS:", error.details);
+
+    alert("ERROR: " + error.message);
+
+    if (error.message.includes("email-already-exists")) {
+      showToast("Mechanic already exists", "error");
+    } else {
+      showToast("Failed to add mechanic", "error");
+    }
+  }
+
+  btn.disabled = false;
+};
+//==========================================================
 async function loadMechanics(user) {
 
   const mechList = document.getElementById("mechanicSelect");

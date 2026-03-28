@@ -38,8 +38,19 @@
 // IMPORTS (ONLY ONCE)
 // ===============================
 
+
 const admin = require("firebase-admin");
+const nodemailer = require("nodemailer");
+const { onCall } = require("firebase-functions/v2/https");
 admin.initializeApp();
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_EMAIL,
+    pass: process.env.GMAIL_PASSWORD
+  }
+});
 
 const {
   onDocumentCreated,
@@ -179,3 +190,83 @@ exports.guardServiceCompletion = onDocumentUpdated(
     }
   }
 );
+
+exports.createMechanicAndSendEmail = onCall(
+  { secrets: ["GMAIL_EMAIL", "GMAIL_PASSWORD"] },
+  async (request) => {
+
+  const { name, email, serviceCenterId } = request.data;
+
+   if (!name || !email || !serviceCenterId) {
+    throw new Error("Missing required fields");
+  }
+
+  let userRecord;
+
+try {
+  userRecord = await admin.auth().createUser({
+    email,
+    password: "Temp@1234"
+  });
+
+  console.log("New user created");
+
+} catch (error) {
+
+  if (error.code === "auth/email-already-exists") {
+
+    console.log("User already exists, fetching existing user...");
+    userRecord = await admin.auth().getUserByEmail(email);
+
+  } else {
+    throw error;
+  }
+}
+
+// 🔥 IMPORTANT: THIS RUNS FOR BOTH CASES
+
+// 2️⃣ SAVE IN FIRESTORE
+await db.collection("users").doc(userRecord.uid).set({
+  name,
+  email,
+  role: "mechanic",
+  serviceCenterId,
+  createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  mustResetPassword: true
+});
+
+// 3️⃣ LOCK EMAIL
+await db.collection("unique_emails").doc(email).set({
+  createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  serviceCenterId
+});
+
+// 4️⃣ GENERATE RESET LINK
+const resetLink = await admin.auth().generatePasswordResetLink(email);
+
+// DEBUG
+console.log("EMAIL USED:", process.env.GMAIL_EMAIL);
+console.log("PASSWORD EXISTS:", !!process.env.GMAIL_PASSWORD);
+
+// 5️⃣ SEND EMAIL
+await transporter.sendMail({
+  from: `"Car Service App" <autocare247.app@gmail.com>`,
+  to: email,
+  subject: "You have been added as a Mechanic",
+  html: `
+    <h2>Welcome to AutoCare247 Car Service System</h2>
+    <p>Hello ${name},</p>
+    <p>You have been added as a <b>Mechanic</b>.</p>
+
+    <p>Please set your password using the link below:</p>
+    <a href="${resetLink}">Set Password</a>
+
+    <p>This link may expire soon. Use 'Forgot Password' if needed.</p>
+
+    <br>
+    <p>Regards,<br>AutoCare247 Car Service Team</p>
+  `
+});
+
+return { success: true };
+});

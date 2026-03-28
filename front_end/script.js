@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, getAuth,sendPasswordResetEmail  } 
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, getAuth,sendPasswordResetEmail , onAuthStateChanged } 
 from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 import { doc, getDoc,setDoc, serverTimestamp, getFirestore }
     from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
@@ -50,7 +50,7 @@ signupBtn.addEventListener("click", async () => {
 let email = document.getElementById("email").value;
 email = email.trim().toLowerCase();
 
-const password = document.getElementById("password").value;   // ✅ ADD THIS LINE
+const password = document.getElementById("password").value;  
 const confirmPassword = document.getElementById("confirmPassword").value;
 
 if (!password || !confirmPassword) {
@@ -64,12 +64,6 @@ if (password !== confirmPassword) {
 }
   try {
 
-    // 🔐 STEP 1: UNIQUE EMAIL LOCK
-  const emailRef = doc(db, "unique_emails", email);
-
-  await setDoc(emailRef, {
-    createdAt: serverTimestamp()
-  });
 
     // 1️⃣ Create user in Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(
@@ -80,10 +74,27 @@ if (password !== confirmPassword) {
 
     const user = userCredential.user;
 
+
+ //  CHECK IF EMAIL ALREADY EXISTS (DB LEVEL)
+    const emailRef = doc(db, "unique_emails", email);
+
+    const emailSnap = await getDoc(emailRef);
+
+    if (emailSnap.exists()) {
+      showToast("Account already exists with this email", "error");
+      return;
+    }
+   
+     // 🔐 UNIQUE EMAIL LOCK
+
+  await setDoc(emailRef, {
+    createdAt: serverTimestamp()
+  });
+
     // 2️⃣ Create user document in Firestore
     await setDoc(doc(db, "users", user.uid), {
       name: name,
-      email: email,
+      email,
       role: "customer",
       createdAt: serverTimestamp()
     });
@@ -93,6 +104,9 @@ if (password !== confirmPassword) {
   } 
   //alerts
   catch (error) {
+
+     console.error("SIGNUP ERROR:", error);
+
   let message = "Signup failed. Please try again.";
 
   if (error.code === "auth/email-already-in-use") {
@@ -114,55 +128,80 @@ if (password !== confirmPassword) {
 });
 
 //signin logic
-
-
 const loginBtn = document.getElementById("loginBtn");
+onAuthStateChanged(auth, async (user) => {
+
+  if (!user) return; // not logged in
+
+  console.log("Auth ready:", user.uid);
+
+  try {
+    const userSnap = await getDoc(doc(db, "users", user.uid));
+
+    if (!userSnap.exists()) {
+      showToast("User profile missing", "error");
+      return;
+    }
+
+    const role = userSnap.data().role;
+
+    console.log("ROLE:", role);
+
+    // 🔥 REDIRECT BASED ON ROLE
+    if (role === "service_center") {
+      window.location.href = "service-dashboard.html";
+    } 
+    else if (role === "mechanic") {
+      window.location.href = "mechanic-dashboard.html";
+    } 
+    else {
+      window.location.href = "dashboard.html";
+    }
+
+  } catch (error) {
+    console.error("AUTH STATE ERROR:", error);
+    showToast("Failed to load user data", "error");
+  }
+});
+
 
 loginBtn.addEventListener("click", async () => {
- let email = document.getElementById("loginEmail").value;
- email = email.trim().toLowerCase();
-const password = document.getElementById("loginPassword").value;
-//alerts
+
+  let email = document.getElementById("loginEmail").value;
+  email = email.trim().toLowerCase();
+
+  const password = document.getElementById("loginPassword").value;
+
   try {
-  const userCredential = await signInWithEmailAndPassword(auth, email, password);
-  const user = userCredential.user;
-  showToast("Login successful", "success");
+    await signInWithEmailAndPassword(auth, email, password);
 
-//redirects to the dashboard based on ROLE:
+    // ✅ ONLY auth here
+    showToast("Login successful", "success");
 
-  const userSnap = await getDoc(doc(db, "users", user.uid));
-const role = userSnap.data().role;
+  } catch (error) {
+    console.error("LOGIN ERROR:", error);
 
-if (role === "service_center") {
-  window.location.href = "service-dashboard.html";
-} else {
-  window.location.href = "dashboard.html";
-}
-}
+    switch (error.code) {
+      case "auth/user-not-found":
+        showToast("No account found with this email.", "error");
+        break;
 
+      case "auth/wrong-password":
+        showToast("Incorrect password.", "error");
+        break;
 
-catch (error) {
-  switch (error.code) {
-    case "auth/user-not-found":
-      showToast("No account found with this email.", "error");
-      break;
+      case "auth/invalid-credential":
+        showToast("Invalid email or password.", "error");
+        break;
 
-    case "auth/wrong-password":
-      showToast("Incorrect password.", "error");
-      break;
+      case "auth/too-many-requests":
+        showToast("Too many attempts. Try again later.", "error");
+        break;
 
-    case "auth/invalid-credential":
-      showToast("Invalid email or password.", "error");
-      break;
-
-    case "auth/too-many-requests":
-      showToast("Too many attempts. Try again later.", "error");
-      break;
-
-    default:
-      showToast("Login failed. Please try again.", "error");
+      default:
+        showToast("Login failed. Please try again.", "error");
+    }
   }
-}
 });
 
 // ===== SECTION TOGGLE =====
