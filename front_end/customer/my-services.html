@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>My Services</title>
+
+ <link
+  rel="stylesheet"
+  href="./customer.css"
+/>
+
+</head>
+
+<body>
+
+  <!-- MENU BUTTON -->
+<button id="menuToggle" class="menu-toggle">
+  ☰
+</button>
+
+<!-- OVERLAY -->
+<div
+  id="sidebarOverlay"
+  class="sidebar-overlay"
+></div>
+
+<!-- DRAWER -->
+<div
+  id="mobileDrawer"
+  class="mobile-drawer"
+>
+
+  <div class="drawer-top">
+
+    <h2>
+      Customer Panel
+    </h2>
+
+  </div>
+
+  <div class="drawer-links">
+
+    <a href="./dashboard.html">
+      Dashboard
+    </a>
+
+    <a href="./my-vehicles.html">
+      My Vehicles
+    </a>
+
+    <a
+      href="./my-services.html"
+      class="active-link"
+    >
+      My Services
+    </a>
+
+    <a href="./service-history.html">
+      Service History
+    </a>
+
+  </div>
+
+  <!-- BOTTOM -->
+  <div class="drawer-bottom">
+
+    <a
+      href="./customer-profile.html"
+      class="drawer-user-card"
+    >
+
+      <div class="drawer-user-left">
+
+        <div
+          class="drawer-user-avatar"
+          id="drawerUserAvatar"
+        >
+          U
+        </div>
+
+        <div class="drawer-user-info">
+
+          <h4 id="drawerUserName">
+            User
+          </h4>
+
+          <p>
+            View Profile
+          </p>
+
+        </div>
+
+      </div>
+
+      <span class="drawer-user-arrow">
+        ˅
+      </span>
+
+    </a>
+
+    <button
+      id="logoutBtn"
+      class="drawer-logout-btn"
+    >
+      ⏻ Logout
+    </button>
+
+  </div>
+
+</div>
+
+<!-- PAGE -->
+<div
+  class="services-page"
+  id="servicesPage"
+>
+ <div class="services-header">
+
+  <h2 class="services-page-title">
+    My Services
+  </h2>
+
+  <p class="services-page-subtitle">
+    Create and track your vehicle services.
+  </p>
+
+</div>
+
+<div class="services-page-inner">
+    
+    <!-- CREATE SERVICE -->
+<div class="services-list-card">
+
+  <div class="services-header-row">
+
+    <div>
+
+    
+
+    </div>
+
+  </div>
+
+  <div class="service-create-grid">
+
+    <div class="service-create-left">
+
+      <label>
+        Select Vehicle
+      </label>
+
+      <select id="carSelect"></select>
+
+      <label>
+        Preferred Service Date
+      </label>
+
+      <input
+        type="date"
+        id="scheduledDate"
+      >
+
+      <label>
+        Preferred Time
+      </label>
+
+      <select id="scheduledTime">
+
+        <option value="">
+          Select Time Slot
+        </option>
+
+        <option value="09:00 AM">
+          09:00 AM
+        </option>
+
+        <option value="11:00 AM">
+          11:00 AM
+        </option>
+
+        <option value="02:00 PM">
+          02:00 PM
+        </option>
+
+        <option value="04:00 PM">
+          04:00 PM
+        </option>
+
+      </select>
+
+    </div>
+
+    <div class="service-create-right">
+
+      <label>
+        Service Notes
+      </label>
+
+      <textarea
+        id="serviceNotes"
+        placeholder="Describe the issue..."
+      ></textarea>
+
+      <button id="createServiceBtn">
+        Create Service
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+    <!-- ACTIVE -->
+   <div
+   class="service-create-card"
+   id="activeServicesSection">
+
+  <div 
+ 
+  class="services-list-header">
+
+    <h3>
+      Active Services
+    </h3>
+
+    <select id="statusFilter">
+
+      <option value="all">
+  All Status
+</option>
+
+<option value="pending_assignment">
+  Pending
+</option>
+
+<option value="assigned">
+  Service Center Assigned
+</option>
+
+<option value="job_assigned">
+  Mechanic Assigned
+</option>
+
+<option value="in_service">
+  In Service
+</option>
+
+    </select>
+
+  </div>
+
+  <div
+    id="activeServiceList"
+    class="active-services-list"
+  ></div>
+
+</div>
+
+
+  
+
+  <!-- IMAGE MODAL -->
+  <div id="imageModal" class="image-modal">
+
+    <span class="image-close">
+      &times;
+    </span>
+
+    <img
+      id="modalImage"
+      class="modal-image-content"
+    >
+
+  </div>
+
+  <!-- TOAST -->
+  <div
+    id="toastContainer"
+    class="toast-container"
+  ></div>
+
+  <script
+    type="module"
+    src="./my-services.js"
+  ></script>
+</div>
+</div>
+</body>
+
+</html>

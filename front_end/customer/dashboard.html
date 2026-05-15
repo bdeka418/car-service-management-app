@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./customer.css">
+    <title>Dashboard</title>
+</head>
+
+
+<body>
+ <!-- MENU BUTTON -->
+<button id="menuToggle" class="menu-toggle">
+  ☰
+</button>
+
+<!-- OVERLAY -->
+<div
+  id="sidebarOverlay"
+  class="sidebar-overlay"
+></div>
+
+<!-- DRAWER -->
+<div
+  id="mobileDrawer"
+  class="mobile-drawer"
+>
+
+  <div class="drawer-top">
+
+    <h2>
+      Customer Panel
+    </h2>
+
+  </div>
+
+  <div class="drawer-links">
+
+    <a
+      href="./dashboard.html"
+      class="active-link"
+    >
+      Dashboard
+    </a>
+
+    <a href="./my-vehicles.html">
+      My Vehicles
+    </a>
+
+    <a href="./my-services.html">
+      My Services
+    </a>
+
+    <a href="./service-history.html">
+      Service History
+    </a>
+
+  
+  </div>
+
+  <!-- BOTTOM -->
+  <div class="drawer-bottom">
+
+    <a
+      href="./customer-profile.html"
+      class="drawer-user-card"
+    >
+
+      <div class="drawer-user-left">
+
+        <div
+          class="drawer-user-avatar"
+          id="drawerUserAvatar"
+        >
+          U
+        </div>
+
+        <div class="drawer-user-info">
+
+          <h4 id="drawerUserName">
+            User
+          </h4>
+
+          <p>
+            View Profile
+          </p>
+
+        </div>
+
+      </div>
+
+      <span class="drawer-user-arrow">
+        ˅
+      </span>
+
+    </a>
+
+    <button
+      id="logoutBtn"
+      class="drawer-logout-btn"
+    >
+      ⏻ Logout
+    </button>
+
+  </div>
+
+</div>
+
+<!-- PAGE -->
+<div
+  class="dashboard-page"
+  id="dashboardPage"
+>
+
+  <div class="dashboard-main">
+
+    <!-- TOPBAR -->
+    <div class="dashboard-topbar">
+
+      <div>
+
+        <h1 class="dashboard-heading">
+          Good morning,
+          <span id="welcomeText">
+            User
+          </span>
+          👋
+        </h1>
+
+        <p class="dashboard-subtitle">
+          Here's an overview of your vehicles and services.
+        </p>
+
+      </div>
+
+      <div class="dashboard-top-actions">
+
+        <div class="dashboard-search">
+
+          <input
+            type="text"
+            placeholder="Search anything..."
+          >
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- HERO -->
+    <div class="dashboard-hero">
+
+      <div class="hero-left">
+
+        <h2>
+          Keep your car always in
+          <span>
+            top shape
+          </span>
+        </h2>
+
+        <p>
+          Regular servicing ensures safety,
+          better performance and long life.
+        </p>
+
+        <button class="hero-btn">
+          Book a Service
+        </button>
+
+      </div>
+
+      <div class="hero-center">
+
+        <img
+          src="./dashboard-car.png"
+          class="hero-car-image"
+        >
+
+      </div>
+
+      <div class="hero-right">
+
+        <div class="hero-feature">
+          Certified Experts
+        </div>
+
+        <div class="hero-feature">
+          Genuine Parts
+        </div>
+
+        <div class="hero-feature">
+          Doorstep Convenience
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- QUICK ACTIONS -->
+    <div class="dashboard-section">
+
+      <div class="section-header">
+
+        <h3>
+          Quick Actions
+        </h3>
+
+      </div>
+
+      <div class="quick-actions-grid">
+
+  <a
+    href="./my-services.html"
+    class="quick-action-card"
+  >
+    📅
+    <span>
+      Book a Service
+    </span>
+  </a>
+
+  <a
+    href="./my-services.html"
+    class="quick-action-card"
+  >
+    ⏰
+    <span>
+      Schedule Appointment
+    </span>
+  </a>
+
+  <a
+    href="./service-history.html"
+    class="quick-action-card"
+  >
+    📄
+    <span>
+      Service History
+    </span>
+  </a>
+
+  <a
+    href="./my-services.html?scroll=active"
+    class="quick-action-card"
+  >
+    📍
+    <span>
+      Track Service
+    </span>
+  </a>
+
+  <a
+    href="./service-history.html"
+    class="quick-action-card"
+  >
+    💳
+    <span>
+      Make Payment
+    </span>
+  </a>
+
+</div>
+
+      </div>
+
+    </div>
+
+    <!-- STATS -->
+<div class="dashboard-stats-grid">
+
+  <div class="dashboard-stat-card blue-card">
+
+    <div class="stat-icon">
+      🚘
+    </div>
+
+    <div>
+      <h3 id="totalVehicles">
+        0
+      </h3>
+
+      <p>
+        My Vehicles
+      </p>
+
+      <a
+  href="./my-vehicles.html"
+  class="section-link"
+>
+  View all vehicles →
+</a>
+    </div>
+
+  </div>
+
+  <div class="dashboard-stat-card green-card">
+
+    <div class="stat-icon">
+      🛠
+    </div>
+
+    <div>
+      <h3 id="activeServices">
+        0
+      </h3>
+
+      <p>
+        Active Services
+      </p>
+      <a
+  href="./my-services.html?scroll=active"
+  class="section-link"
+>
+  View All →
+</a>
+    </div>
+
+  </div>
+
+  <div class="dashboard-stat-card orange-card">
+
+    <div class="stat-icon">
+      📅
+    </div>
+
+    <div>
+      <h3 id="upcomingAppointments">
+        0
+      </h3>
+
+      <p>
+        Upcoming Appointment
+      </p>
+
+     <a
+  href="./my-services.html"
+  class="section-link"
+>
+  View details →
+</a>
+    </div>
+
+  </div>
+
+  <div class="dashboard-stat-card purple-card">
+
+    <div class="stat-icon">
+      ₹
+    </div>
+
+    <div>
+      <h3 id="totalSpent">
+        ₹0
+      </h3>
+
+      <p>
+        Total Spent
+      </p>
+
+     <a
+  href="./service-history.html"
+  class="section-link"
+>
+  View transactions →
+</a>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- VEHICLE + UPCOMING -->
+<div class="dashboard-content-grid">
+
+  <!-- VEHICLES -->
+  <div class="dashboard-section">
+
+    <div class="section-header">
+
+      <h3>
+        My Vehicles
+      </h3>
+
+      <a class="section-link">
+        <a href="./my-vehicles.html">
+  <a href="./my-vehicles.html">
+  View All Vehicles →
+</a>
+</a>
+      </a>
+
+    </div>
+
+    <div
+      id="dashboardVehiclesGrid"
+      class="dashboard-vehicles-grid"
+    ></div>
+
+    <a href="./my-vehicles.html?action=add" class="dashboard-add-vehicle">
+  <div class="add-vehicle-circle">
+    +
+  </div>
+  <span>
+    Add Vehicle
+  </span>
+</a>
+
+  </div>
+
+  <!-- UPCOMING -->
+  <div class="dashboard-section">
+
+    <div class="section-header">
+
+      <h3>
+        Upcoming Service
+      </h3>
+
+      <a class="section-link">
+        <a href="./my-services.html?scroll=active">
+  View all →
+</a>
+      </a>
+
+    </div>
+
+    <div
+      id="upcomingServiceCard"
+      class="upcoming-service-card"
+    >
+
+      No upcoming services
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- RECENT + SPENDING -->
+<div class="dashboard-bottom-grid">
+
+  <!-- RECENT -->
+  <div class="dashboard-section">
+
+    <div class="section-header">
+
+      <h3>
+        Recent Services
+      </h3>
+
+      <a class="section-link">
+        View All Services →
+      </a>
+
+    </div>
+
+   <table class="recent-services-table">
+
+  <thead>
+
+    <tr>
+
+      <th>Service ID</th>
+
+      <th>Vehicle</th>
+
+      <th>Service Note</th>
+
+      <th>Date</th>
+
+      <th>Status</th>
+
+      <th>Amount</th>
+
+      <th>Action</th>
+
+    </tr>
+
+  </thead>
+
+  <tbody
+    id="recentServicesList"
+  >
+
+  </tbody>
+
+</table>
+  </div>
+
+  <!-- SPENDING -->
+  <div class="dashboard-side-column">
+
+    <div class="dashboard-section">
+
+      <div class="section-header">
+
+        <h3>
+          Spending Overview
+        </h3>
+
+      </div>
+
+      <div class="spending-card">
+
+        <div class="spending-circle">
+          ₹
+        </div>
+
+        <h2 id="spendingAmount">
+          ₹0
+        </h2>
+
+        <p>
+          Total Service Spending
+        </p>
+
+      </div>
+
+    </div>
+
+    <!-- OFFER -->
+    <div class="dashboard-section offer-card">
+
+      <h3>
+        Exclusive Offers For You 🎉
+      </h3>
+
+      <p>
+        Get flat 15% off on your next service.
+      </p>
+
+      <div class="offer-code">
+        AUTOCARE15
+      </div>
+
+      <button class="offer-btn">
+        View Offers
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- SUPPORT -->
+<div class="dashboard-support-card">
+
+  <div>
+
+    <h3>
+      Need help? We're here for you 24/7
+    </h3>
+
+    <p>
+      Our support team is always ready to assist you.
+    </p>
+
+  </div>
+
+  <button class="support-btn">
+    Contact Support
+  </button>
+
+</div>
+
+  </div>
+
+
+
+</div>
+
+<script
+  type="module"
+  src="./dashboard.js"
+></script>
+
+
+</body>
+</html>

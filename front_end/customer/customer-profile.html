@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>My Profile</title>
+
+  <link
+    rel="stylesheet"
+    href="./customer.css"
+  />
+
+</head>
+
+<body>
+
+<!-- MENU BUTTON -->
+<button
+  id="menuToggle"
+  class="menu-toggle"
+>
+  ☰
+</button>
+
+<!-- OVERLAY -->
+<div
+  id="sidebarOverlay"
+  class="sidebar-overlay"
+></div>
+
+<!-- DRAWER -->
+<div
+  id="mobileDrawer"
+  class="mobile-drawer"
+>
+
+  <div class="drawer-top">
+
+    <h2>
+      Customer Panel
+    </h2>
+
+  </div>
+
+  <div class="drawer-links">
+
+    <a href="./dashboard.html">
+      Dashboard
+    </a>
+
+    <a href="./my-vehicles.html">
+      My Vehicles
+    </a>
+
+    <a href="./my-services.html">
+      Active Services
+    </a>
+
+    <a href="./service-history.html">
+      Service History
+    </a>
+
+  </div>
+
+  <!-- BOTTOM -->
+ <div class="drawer-bottom">
+
+  <!-- USER CARD -->
+
+  <div class="drawer-user-card">
+
+    <div class="drawer-user-left">
+
+      <div
+        class="drawer-user-avatar"
+        id="drawerUserAvatar"
+      >
+        U
+      </div>
+
+      <div class="drawer-user-info">
+
+        <h4 id="drawerUserName">
+          User
+        </h4>
+
+        <p>
+          View Profile
+        </p>
+
+      </div>
+
+    </div>
+
+    <span class="drawer-user-arrow">
+      ˅
+    </span>
+
+  </div>
+
+  <!-- LOGOUT -->
+
+  <button
+    id="logoutBtn"
+    class="drawer-logout-btn"
+  >
+    ⏻ Logout
+  </button>
+
+</div>
+
+</div>
+
+<!-- PAGE -->
+<div
+  class="profile-layout"
+  id="profilePage"
+>
+
+  <!-- PROFILE PAGE -->
+  <div class="profile-page">
+
+    <!-- HEADER -->
+    <div class="profile-header">
+
+      <div>
+
+        <h1 class="profile-title">
+          My Profile
+        </h1>
+
+        <p class="profile-subtitle">
+          Manage your personal information and account settings.
+        </p>
+
+      </div>
+
+    </div>
+
+    <!-- HERO -->
+    <div class="profile-hero-card">
+
+      <div class="profile-hero-left">
+
+        <img
+  id="profileImage"
+  src="./default-avatar.png"
+  class="profile-avatar"
+>
+
+        <div>
+
+          <div class="profile-name-row">
+
+            <h2 id="profileName">
+              Bikash Deka
+            </h2>
+
+           <span
+  class="verified-badge"
+  id="verifiedBadge"
+>
+  Verified
+</span>
+
+          </div>
+
+          <p id="profileEmail">
+            bikashdeka@email.com
+          </p>
+
+          <p id="profilePhone">
+            +91 98765 43210
+          </p>
+
+        </div>
+
+      </div>
+
+      <button class="profile-edit-btn">
+        ✎ Edit Profile
+      </button>
+
+    </div>
+
+    <!-- GRID -->
+    <div class="profile-grid">
+
+      <!-- PERSONAL -->
+      <div class="profile-section-card">
+
+        <h3>
+          Personal Information
+        </h3>
+
+        <div class="profile-info-list">
+
+          <div class="profile-info-item">
+            <span>Full Name</span>
+            <p id="infoName">
+              Bikash Deka
+            </p>
+          </div>
+
+          <div class="profile-info-item">
+            <span>Date of Birth</span>
+            <p id="infoDob">
+               N/A
+              </p>
+          </div> 
+
+          <div class="profile-info-item">
+            <span>Phone Number</span>
+            <p id="infoPhone">
+              +91 98765 43210
+            </p>
+          </div>
+
+          <div class="profile-info-item">
+            <span>Email Address</span>
+            <p id="infoEmail">
+              bikashdeka@email.com
+            </p>
+          </div>
+
+          <div class="profile-info-item">
+            <span>Address</span>
+            <p id="infoAddress">
+                   N/A
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- SECURITY -->
+      <div class="profile-section-card">
+
+        <h3>
+          Account & Security
+        </h3>
+
+        <div class="profile-info-list">
+
+          <div class="profile-info-item">
+  <span>Password</span>
+
+  <button
+    class="security-action-btn"
+    id="changePasswordBtn"
+  >
+    Change Password
+  </button>
+</div>
+
+<div class="profile-info-item">
+  <span>Email Verification</span>
+
+ <div
+  style="
+  display:flex;
+  align-items:center;
+  gap:12px;
+  "
+>
+
+  <p
+    class="green-text"
+    id="emailVerificationStatus"
+  >
+    Verified
+  </p>
+
+  <button
+    class="security-action-btn"
+    id="verifyEmailBtn"
+  >
+    Verify
+  </button>
+
+</div>
+</div>
+
+<div class="profile-info-item">
+  <span>Last Login</span>
+
+  <p id="lastLoginText">
+    Loading...
+  </p>
+</div>
+
+<div class="profile-info-item">
+  <span>Active Session</span>
+
+  <button
+    class="security-action-btn"
+    id="logoutAllBtn"
+  >
+    Logout All
+  </button>
+</div>
+
+        </div>
+
+      </div>
+
+      <!-- PREFERENCES -->
+      <div class="profile-section-card">
+
+        <h3>
+          Preferences
+        </h3>
+
+        <div class="profile-info-list">
+
+          <div class="profile-info-item">
+            <span>Notification Preferences</span>
+            <p class="purple-text">
+              Manage
+            </p>
+          </div>
+
+          <div class="profile-info-item">
+            <span>Language</span>
+            <p id="infoLanguage">
+  English
+</p>
+          </div>
+
+          <div class="profile-info-item">
+            <span>Theme</span>
+           <p id="infoTheme">
+  System Default
+</p>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- STATS -->
+      <div class="profile-section-card">
+
+        <h3>
+          Activity Overview
+        </h3>
+
+        <div class="profile-stats-grid">
+
+          <div class="profile-stat-box">
+            <h2 id="vehicleCount">0</h2>
+            <span>Vehicles</span>
+          </div>
+
+          <div class="profile-stat-box">
+            <h2 id="serviceCount">0</h2>
+            <span>Services</span>
+          </div>
+
+          <div class="profile-stat-box">
+            <h2 id="appointmentCount">0</h2>
+            <span>Appointments</span>
+          </div>
+
+          <div class="profile-stat-box">
+            <h2 id="spentAmount">₹0</h2>
+            <span>Total Spent</span>
+          </div>
+
+          <div class="profile-stat-box">
+  <h2 id="cancelledCount">0</h2>
+  <span>Cancelled</span>
+</div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+   <p
+  class="member-since"
+  id="memberSince"
+>
+  Member since
+</p>
+
+  </div>
+
+</div>
+
+<!-- EDIT PROFILE MODAL -->
+
+<div
+  class="vehicle-modal"
+  id="editProfileModal"
+>
+
+  <div class="modern-vehicle-modal">
+
+    <button
+      class="close-modal"
+      id="closeProfileModal"
+    >
+      ✕
+    </button>
+
+    <div class="vehicle-modal-header">
+
+      <h2>
+        Edit Profile
+      </h2>
+
+      <p>
+        Update your personal information
+      </p>
+
+    </div>
+
+    <div class="vehicle-modal-layout">
+
+      <!-- FORM -->
+
+      <div class="vehicle-form-grid">
+
+        <div class="form-group">
+          <label>Full Name</label>
+
+          <input
+            type="text"
+            id="editName"
+          >
+        </div>
+
+        <div class="form-group">
+          <label>Phone Number</label>
+
+          <input
+            type="text"
+            id="editPhone"
+          >
+        </div>
+
+        <div class="form-group">
+          <label>Date of Birth</label>
+
+          <input
+            type="date"
+            id="editDob"
+          >
+        </div>
+
+        <div class="form-group">
+          <label>City</label>
+
+          <input
+            type="text"
+            id="editCity"
+          >
+        </div>
+
+        <div class="form-group">
+          <label>State</label>
+
+          <input
+            type="text"
+            id="editState"
+          >
+        </div>
+
+        <div class="form-group">
+          <label>Country</label>
+
+          <input
+            type="text"
+            id="editCountry"
+          >
+        </div>
+
+        <div class="form-group">
+  <label>Pincode</label>
+
+  <input
+    type="text"
+    id="editPincode"
+  >
+</div>
+
+        <div class="form-group full-width">
+
+          <label>Address</label>
+
+          <textarea
+            id="editAddress"
+          ></textarea>
+
+        </div>
+
+      </div>
+
+      <!-- IMAGE -->
+
+      <div class="vehicle-upload-section">
+
+        <h4>
+          Profile Photo
+        </h4>
+
+        <div
+          class="upload-box"
+          id="profileUploadBox"
+        >
+
+          <input
+            type="file"
+            id="profileImageInput"
+            accept="image/*"
+            hidden
+          >
+
+          <div class="upload-icon">
+            ⬆
+          </div>
+
+          <button
+            type="button"
+            class="choose-image-btn"
+            id="chooseProfileImageBtn"
+          >
+            Choose Image
+          </button>
+
+          <img
+            id="profilePreviewImage"
+            class="preview-car-image"
+            src="./default-avatar.png"
+          >
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="vehicle-modal-footer">
+
+      <div></div>
+
+      <div class="vehicle-footer-actions">
+
+        <button
+          class="cancel-btn"
+          id="cancelProfileEdit"
+        >
+          Cancel
+        </button>
+
+        <button
+          id="saveProfileBtn"
+        >
+          Save Profile
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- CHANGE PASSWORD MODAL -->
+
+<div
+  class="vehicle-modal"
+  id="changePasswordModal"
+>
+
+  <div
+    class="modern-vehicle-modal"
+    style="max-width:520px;"
+  >
+
+    <button
+      class="close-modal"
+      id="closePasswordModal"
+    >
+      ✕
+    </button>
+
+    <div class="vehicle-modal-header">
+
+      <h2>
+        Change Password
+      </h2>
+
+      <p>
+        Update your account password
+      </p>
+
+    </div>
+
+    <div
+      class="vehicle-form-grid"
+      style="
+      grid-template-columns:1fr;
+      margin-top:20px;
+      "
+    >
+
+      <div class="form-group">
+
+        <label>
+          Current Password
+        </label>
+
+        <input
+          type="password"
+          id="currentPassword"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>
+          New Password
+        </label>
+
+        <input
+          type="password"
+          id="newPassword"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>
+          Confirm Password
+        </label>
+
+        <input
+          type="password"
+          id="confirmPassword"
+        >
+
+      </div>
+
+    </div>
+
+    <div class="vehicle-modal-footer">
+
+      <div></div>
+
+      <div class="vehicle-footer-actions">
+
+        <button
+          class="cancel-btn"
+          id="cancelPasswordBtn"
+        >
+          Cancel
+        </button>
+
+        <button
+          id="savePasswordBtn"
+        >
+          Update Password
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- TOAST -->
+
+<div
+  class="toast-container"
+  id="toastContainer"
+></div>
+
+<script
+  type="module"
+  src="./customer-profile.js"
+></script>
+
+</body>
+</html>

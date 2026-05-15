@@ -1,12 +1,16 @@
 // Firebase config (use your own config here)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
 
-import { getFirestore } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+import { getFirestore }
+from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 import { getAuth } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 
+import { getStorage } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-storage.js";
+
+
 const firebaseConfig = {
- apiKey: "AIzaSyBf_wiFJv5K-wHZdPKGjx48dAIwYCE36rw",
+    apiKey: "AIzaSyBf_wiFJv5K-wHZdPKGjx48dAIwYCE36rw",
     authDomain: "car-service-app-c369c.firebaseapp.com",
     projectId: "car-service-app-c369c",
     storageBucket: "car-service-app-c369c.firebasestorage.app",
@@ -20,5 +24,6 @@ const app = initializeApp(firebaseConfig);
 // Firestore DB
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
 
-export { db, auth };
+export { db, auth, storage };

@@ -100,7 +100,7 @@ if (password !== confirmPassword) {
     });
 
     showToast("Signup successful", "success");
-    window.location.href = "dashboard.html"; //redirects to the dashboard
+    window.location.href = "customer/dashboard.html"; //redirects to the dashboard
   } 
   //alerts
   catch (error) {
@@ -149,13 +149,13 @@ onAuthStateChanged(auth, async (user) => {
 
     // 🔥 REDIRECT BASED ON ROLE
     if (role === "service_center") {
-      window.location.href = "service-dashboard.html";
+      window.location.href = "service-center/service-dashboard.html";
     } 
     else if (role === "mechanic") {
       window.location.href = "mechanic-dashboard.html";
     } 
     else {
-      window.location.href = "dashboard.html";
+      window.location.href = "customer/dashboard.html";
     }
 
   } catch (error) {

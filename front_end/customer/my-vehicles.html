@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>My Vehicles</title>
+
+<link rel="stylesheet" href="./customer.css">
+
+</head>
+
+
+
+ <body>
+
+<!-- MENU -->
+<button id="menuToggle" class="menu-toggle">
+  ☰
+</button>
+
+<!-- OVERLAY -->
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+<!-- SIDEBAR -->
+<div id="mobileDrawer" class="mobile-drawer">
+
+  <div class="drawer-top">
+    <h2>Customer Panel</h2>
+  </div>
+
+  <div class="drawer-links">
+
+    <a href="./dashboard.html">
+      Dashboard
+    </a>
+
+    <a
+      href="./my-vehicles.html"
+      class="active-link"
+    >
+      My Vehicles
+    </a>
+
+    <a href="./my-services.html">
+      My Services
+    </a>
+
+    <a href="./service-history.html">
+      Service History
+    </a>
+</div>
+<!-- BOTTOM -->
+<div class="drawer-bottom">
+
+  <a
+    href="./customer-profile.html"
+    class="drawer-user-card"
+  >
+
+    <div class="drawer-user-left">
+
+      <div
+        class="drawer-user-avatar"
+        id="drawerUserAvatar"
+      >
+        U
+      </div>
+
+      <div class="drawer-user-info">
+
+        <h4 id="drawerUserName">
+          User
+        </h4>
+
+        <p>
+          View Profile
+        </p>
+
+      </div>
+
+    </div>
+
+    <span class="drawer-user-arrow">
+      ˅
+    </span>
+
+  </a>
+
+  <button
+    id="logoutBtn"
+    class="drawer-logout-btn"
+  >
+    ⏻ Logout
+  </button>
+
+</div>
+
+  
+
+</div>
+
+<!-- PAGE -->
+<div
+  id="vehiclesPage"
+  class="vehicles-page"
+>
+
+  <!-- HEADER -->
+  <div class="vehicles-topbar">
+
+    <div>
+
+      <h1 class="vehicles-title">
+        My Vehicles
+      </h1>
+
+      <p class="vehicles-subtitle">
+        Manage your vehicles and service history
+      </p>
+
+    </div>
+
+    <button
+      class="add-vehicle-top-btn"
+      id="openVehicleModal"
+    >
+      + Add Vehicle
+    </button>
+
+  </div>
+
+  <!-- SEARCH -->
+  <div class="vehicles-search-row">
+
+    <input
+      type="text" 
+      placeholder="Search vehicles..."
+      class="vehicles-search"
+      id="vehicleSearch"
+    >
+
+  </div>
+
+  <!-- STATS -->
+  <div class="vehicle-stats-row">
+
+    <div class="vehicle-stat-card">
+      <h3 id="totalVehicles">0</h3>
+      <p>Total Vehicles</p>
+    </div>
+
+    <div class="vehicle-stat-card">
+      <h3 id="activeVehicles">0</h3>
+      <p>Active</p>
+    </div>
+
+    <div class="vehicle-stat-card">
+      <h3 id="dueVehicles">0</h3>
+      <p>Due for Service</p>
+    </div>
+
+    <div class="vehicle-stat-card">
+      <h3 id="inactiveVehicles">0</h3>
+      <p>Inactive</p>
+    </div>
+
+  </div>
+
+  <!-- VEHICLE GRID -->
+  <div
+    class="vehicle-grid"
+    id="vehicleList"
+  ></div>
+
+</div>
+
+<!-- MODAL -->
+<div
+  class="vehicle-modal"
+  id="vehicleModal"
+>
+
+  <div class="vehicle-modal-card modern-vehicle-modal">
+
+  <button
+    class="close-modal"
+    id="closeVehicleModal"
+  >
+    ✕
+  </button>
+
+  <div class="vehicle-modal-header">
+    <h2>Add New Vehicle</h2>
+    <p>
+      Fill in the details below to add your vehicle
+    </p>
+  </div>
+
+  <div class="vehicle-modal-layout">
+
+    <!-- LEFT -->
+    <div class="vehicle-form-section">
+
+      <div class="vehicle-form-grid">
+
+        <div class="form-group">
+          <label>
+  Brand <span class="required">*</span>
+</label>
+          <input
+            type="text"
+            id="brand"
+            placeholder="Enter Brand"
+          >
+        </div>
+
+        <div class="form-group">
+          <label>
+  Model <span class="required">*</span>
+</label>
+          <input
+            type="text"
+            id="model"
+            placeholder="Enter Model"
+          >
+        </div>
+
+        <div class="form-group">
+          <label>
+  Year <span class="required">*</span>
+</label>
+          <input
+            type="number"
+            id="year"
+            placeholder="Enter year"
+          >
+        </div>
+
+        <div class="form-group">
+          <label>Variant</label>
+          <input
+            type="text"
+            id="variant"
+            placeholder="Enter trim or variant"
+          >
+        </div>
+
+        <div class="form-group">
+          <label>
+  Registration Number
+  <span class="required">*</span>
+</label>
+          <input
+            type="text"
+            id="carNumber"
+            placeholder="Enter registration number"
+          >
+        </div>
+
+        <div class="form-group">
+         <label>
+  Colour <span class="required">*</span>
+</label>
+          <input
+            type="text"
+            id="colour"
+            placeholder="Enter colour"
+          >
+        </div>
+
+        <div class="form-group">
+          <label>Odometer Reading (km)</label>
+          <input
+            type="number"
+            id="mileage"
+            placeholder="Enter current mileage"
+          >
+        </div>
+
+        <div class="form-group">
+         <label>
+  Fuel Type
+  <span class="required">*</span>
+</label>
+          <select id="fuelType">
+           <option value="">
+  Select Fuel Type
+</option>
+
+<option>Petrol</option>
+<option>Diesel</option>
+<option>Electric</option>
+<option>Hybrid</option>
+          </select>
+        </div>
+
+      </div>
+
+      <div class="form-group full-width">
+        <label>
+  Transmission
+  <span class="required">*</span>
+</label>
+
+        <select id="transmission">
+          <option value="">
+  Select Transmission
+</option>
+          <option>Automatic</option>
+          <option>Manual</option>
+        </select>
+      </div>
+
+      <div class="form-group full-width">
+        <label>Notes</label>
+
+        <textarea
+          id="vehicleNotes"
+          placeholder="Add any notes about your vehicle"
+        ></textarea>
+      </div>
+
+      <div class="vehicle-modal-footer">
+
+        <div class="checkbox-row">
+          <input
+            type="checkbox"
+            id="activeVehicle"
+            checked
+          >
+          <span>Set as active vehicle</span>
+        </div>
+
+        <div class="vehicle-footer-actions">
+
+          <button
+            class="cancel-btn"
+            id="cancelVehicleModal"
+            type="button"
+          >
+            Cancel
+          </button>
+
+          <button id="addCarBtn">
+            Add Vehicle
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- RIGHT -->
+    <div class="vehicle-upload-section">
+
+      <h4>Vehicle Photo (Optional)</h4>
+
+      <p>Add a photo of your vehicle</p>
+
+      <label
+  for="carImage"
+  class="upload-box"
+  id="uploadBox"
+>
+
+        <div class="upload-icon">
+          ⬆
+        </div>
+
+        <span>
+          Drag and drop an image here
+        </span>
+
+        <small>or</small>
+
+        <button
+  type="button"
+  class="choose-image-btn"
+  id="chooseImageBtn"
+>
+  Choose Image
+</button>
+
+        <input
+          type="file"
+          id="carImage"
+          accept="image/*"
+          hidden
+        >
+
+      </label>
+
+      <img
+        src="./fortuner.png"
+        id="previewImage"
+        class="preview-car-image"
+      >
+
+      <p class="upload-note">
+        Having a photo helps you identify your vehicle quickly.
+      </p>
+
+    </div>
+
+  </div>
+
+</div>
+
+</div>
+
+<div
+  id="toastContainer"
+  class="toast-container"
+></div>
+
+<script
+  type="module"
+  src="./my-vehicles.js"
+></script>
+
+</body>
+</html>

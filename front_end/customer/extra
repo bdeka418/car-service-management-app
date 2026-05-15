@@ -1,54 +1,35 @@
-import { getAuth, onAuthStateChanged, signOut } 
+import { db, auth } from "../firebase.js";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  serverTimestamp,
+  doc,
+  getDoc,
+  onSnapshot
+}  
+from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+import {
+  onAuthStateChanged,
+  signOut
+}
 from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 
-import { initializeApp } 
-from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
 
-import {getFirestore ,collection, addDoc, query, where, getDocs,setDoc, updateDoc,serverTimestamp, doc, getDoc, onSnapshot} 
-from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
-
-
-
-const firebaseConfig = {
- apiKey: "AIzaSyBf_wiFJv5K-wHZdPKGjx48dAIwYCE36rw",
-    authDomain: "car-service-app-c369c.firebaseapp.com",
-    projectId: "car-service-app-c369c",
-    storageBucket: "car-service-app-c369c.firebasestorage.app",
-    messagingSenderId: "88111807766",
-    appId: "1:88111807766:web:0ccaf8189abf18d336e437",
-  };
-  
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-
-  //welcome note
-  const welcomeText = document.getElementById("welcomeText");
-  //car DOMS
-  const addCarBtn = document.getElementById("addCarBtn");
-  const carNumber = document.getElementById("carNumber");
-  const brand = document.getElementById("brand");
-  const model = document.getElementById("model");
-  const colour = document.getElementById("colour");
-  //Service DOMS
-  const carSelect = document.getElementById("carSelect");
-  const serviceNotes = document.getElementById("serviceNotes");
-  const activeServiceList = document.getElementById("activeServiceList");
-  const serviceHistoryList = document.getElementById("serviceHistoryList");  
-  const createServiceBtn = document.getElementById("createServiceBtn");
-  const historyList = document.getElementById("historyList");
-  const carHistory = document.getElementById("carHistory");
+const welcomeText = document.getElementById("welcomeText");
+const activeServiceList = document.getElementById("activeServiceList");
+const serviceHistoryList = document.getElementById("serviceHistoryList");
   //priority
-  const priorityOrder = {
+ const priorityOrder = {
   assigned: 1,
   in_progress: 2,
   completed: 3,
   cancelled: 4
 };
-  //role
-let currentRole = null;
-let currentUser = null;
-
+let currentRole
+let currentUser
 const carDataCache = {};
 // 🔐 Auth check
 onAuthStateChanged(auth, async (user) => {
@@ -71,195 +52,34 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-    
-    //the button are enbale once the user is logged in*(UI)
-    addCarBtn.disabled = false;
-    createServiceBtn.disabled = false;
-
-loadCarOptions();
+ await loadCars(); 
 listenToCustomerServices();
 
     }
 });
+
+async function loadCars() {
+
+  const q = query(
+    collection(db, "cars"),
+    where("ownerId", "==", currentUser.uid)
+  );
+
+  const snap = await getDocs(q);
+
+  snap.forEach(d => {
+
+    carDataCache[d.id] = d.data();
+
+  });
+
+}
 
 // 🚪 Logout
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   await signOut(auth);
   showToast("Logged out successfully", "success");
   window.location.href = "index.html";
-});
-
-
-//the car logic
-
-
-
-addCarBtn.addEventListener("click", async () => {
-
-  //checks is the car is already exists
-
-  const carCheckQuery = query(
-  collection(db, "cars"),
-  where("ownerId", "==", currentUser.uid),
-  where("carNumber", "==", carNumber.value.trim())
-);
-
-const existingCars = await getDocs(carCheckQuery);
-
-if (!existingCars.empty) {
-  showToast("This car is already registered", "success");
-  return;
-}
-
-  if (
-    !carNumber.value.trim() ||
-    !brand.value.trim() ||
-    !model.value.trim() ||
-    !colour.value.trim()
-  ) {
-    showToast("Fill all car details", "warning");
-    return;
-  }
-  //disable button the user is known or logged in
-  addCarBtn.disabled = true;
-createServiceBtn.disabled = true;
-
-  try {
-    await setDoc(
-      //set the RC number as the CarID
-    doc(db, "cars", carNumber.value.trim().toUpperCase()), {
-      ownerId: currentUser.uid,
-      carNumber: carNumber.value.trim().toUpperCase(),
-      brand: brand.value.trim(),
-      model: model.value.trim(),
-      colour: colour.value.trim(),
-      createdAt: serverTimestamp()
-    });
-
-    carNumber.value = "";
-    brand.value = "";
-    model.value = "";
-    colour.value = "";
-
-    showToast("Car added successfully", "success");
-
-    carNumber.value = "";
-    brand.value = "";
-    model.value = "";
-    colour.value = "";
-
-    loadCarOptions();
-
-  } catch (e) {
-    console.error(e);
-    showToast("Failed to add car", "error");
-   } finally {
-    addCarBtn.disabled = false;
-    createServiceBtn.disabled = false;
-   }
-});
-
-
-
-// populate car dropdown
-async function loadCarOptions() {
-  carSelect.innerHTML = "";
-  carHistory.innerHTML = "";
-
-  // Add the "Placeholder" options first
-  const placeholder1 = new Option("Select Car", "");
-  placeholder1.disabled = true;  // Optional: makes it unselectable once changed
-  placeholder1.selected = true;  // Makes it the default visible text
-  carSelect.appendChild(placeholder1);
-
-  const placeholder2 = new Option("Select Car for History", "");
-  placeholder2.disabled = true;
-  placeholder2.selected = true;
-  carHistory.appendChild(placeholder2);
-
-  const q = query(collection(db, "cars"), 
-  where("ownerId", "==", currentUser.uid));
-
-  const snap = await getDocs(q);
-
-  //  No car -> block service creation
-  if (snap.empty) {
-    createServiceBtn.disabled = true;
-    return;
-  }
-
-  // Cars exist -> allow service creation
-  createServiceBtn.disabled = false;
-  
- snap.forEach(d => {
-
-  const carData = d.data();
-
-  carDataCache[d.id] = carData;
-    const displayText = `${carData.carNumber} - ${carData.brand} (${carData.model})`;
-    const carId = d.id;
-
-    // Add to 'Create Service' dropdown
-    const opt1 = new Option(displayText, carId);
-    carSelect.appendChild(opt1);
-
-    // Add to 'View History' dropdown
-    const opt2 = new Option(displayText, carId);
-    carHistory.appendChild(opt2);
-  });
-}
-//verfying and blocking if or car is not selected or no note added for the service created
-// ------CREATE SERVICE----
-createServiceBtn.addEventListener("click", async () => {
-  if (!carSelect.value) {
-    showToast("Please register a car before creating a service", "warning");
-    return;
-  }
-
-  if (!serviceNotes.value.trim()) {
-    showToast("Please add service notes", "warning");
-    return;
-  }
-
-  //check: is this car already in service?
-
-  const activeServiceQuery = query(
-    collection(db, "services"),
-    where("ownerId", "==", currentUser.uid),
-    where("carId", "==", carSelect.value),
-    where("serviceStatus", "in", ["in_progress", "assigned"])
-  );
-
-  const activeSnap = await getDocs(activeServiceQuery);
-
-  if (!activeSnap.empty) {
-    showToast("This car is already under service. Please wait until it is completed.", "warning");
-     serviceNotes.value = "";
-    return;
-  }
-
-
-  try {
-    await addDoc(collection(db, "services"), {
-      ownerId: currentUser.uid,
-      carId: carSelect.value,
-      notes: serviceNotes.value,
-      serviceStatus: "in_progress",
-      assignedServiceCenterId: null, // NOT assigned yet
-
-      createdAt: serverTimestamp(),
-      startedAt: serverTimestamp()
-    });
-    showToast("Service created", "success");
-
-    serviceNotes.value = "";
-    carSelect.selectedIndex = 0;
-
-   // listenToCustomerServices();
-
-  } catch {
-    showToast("Failed to create service", "error");
-  }
 });
 
 //analytics function
@@ -465,8 +285,6 @@ html += `</div>`;
 return html;
 }
 
-
-
 //service timeline builder function
 function buildStageProgress(stages) {
 
@@ -486,7 +304,6 @@ function buildStageProgress(stages) {
     </div>
   `;
 }
-
 
 
 // list services
@@ -635,164 +452,6 @@ ${activityLog}
   });
 }
 
-
-//cancel service function
-
-async function cancelService(serviceId) {
-
-  const confirmCancel = confirm(
-    "Are you sure you want to cancel this service request?"
-  );
-
-  if (!confirmCancel) return;
-
-   const reason = prompt("Enter reason for cancelling this service:");
-
-  if (!reason) {
-    showToast("Cancellation requires a reason", "warning");
-    return;
-  }
-
-  try {
-
-    await updateDoc(doc(db, "services", serviceId), {
-      serviceStatus: "cancelled",
-      cancelReason: reason,
-      cancelledRole: "customer",
-      cancelledBy: currentUser.uid,
-      cancelledAt: serverTimestamp()
-    });
-
-    showToast("Service request cancelled", "success");
-
-  } catch (err) {
-
-    console.error(err);
-    showToast("Failed to cancel service", "error");
-
-  }
-}
-window.cancelService = cancelService;
-//service history list
-
-async function loadServiceHistory(carId) {
-  historyList.innerHTML = "";
-
-  const q = query(
-    collection(db, "services"),
-    where("ownerId", "==", currentUser.uid),
-    where("carId", "==", carId)
-  );
-
-  const snap = await getDocs(q);
-
-  if (snap.empty) {
-  activeServiceList.innerHTML = `
-    <li>
-      <div class="empty-state">
-        🚗 No active services yet
-      </div>
-    </li>
-  `;
-  return;
-}
-
-  const services = snap.docs
-    .map(d => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => (b.startedAt?.seconds || 0) - (a.startedAt?.seconds || 0));
-
-  for (const s of services) {
-
-    const li = document.createElement("li");
-    li.id = `history-${s.id}`;   // ⭐ important for safe rendering
-
-    const statusLabel =
-      s.serviceStatus === "completed"
-        ? "COMPLETED"
-        : s.serviceStatus === "assigned"
-        ? "ASSIGNED TO TECHNICIAN"
-        : s.serviceStatus === "cancelled"
-        ? "CANCELLED"
-        : "IN PROGRESS (Awaiting service center)";
-        
-
-
-    li.innerHTML = `
-<div class="service-tile">
-
-  <div>
-    <strong style="
-  color:${s.serviceStatus === "cancelled" ? "red" :
-         s.serviceStatus === "completed" ? "green" :
-         s.serviceStatus === "assigned" ? "goldenrod" : "black"}
-">
-${statusLabel}
-</strong>
-  </div>
-
-  ${
-    s.serviceStatus === "cancelled"
-    ? `
-    
-      <div style="color:red;">
-      Cancelled By: ${
-        s.cancelledRole === "service_center"
-        ? "Service Center"
-        : "Customer"
-      }
-    </div>
-
-      <div>
-        Reason: ${s.cancelReason || "No reason provided"}
-      </div>
-    `
-    : ""
-  }
-
-  <div><strong>Timeline</strong></div>
-  ${buildServiceTimeline(s)}
-
-${await buildServiceActivityLog(s.id, s)}
-
-  ${s.serviceStatus === "completed" ? calculateServiceMetrics(s) : ""}
-
-  <div>
-    📝Service Notes: ${s.notes || "—"}
-  </div>
-
-  <div id="history-media-${s.id}" class="service-media"></div>
-
-</div>
-`;
-
-    const existing = document.getElementById(`history-${s.id}`);
-
-    if (existing) {
-      existing.replaceWith(li);
-    } else {
-      historyList.appendChild(li);
-    }
-
-    if (s.hasMedia) {
-      loadMedia(s.id, `history-media-${s.id}`);
-    }
-
-  }
-}
-
-//trigger on click show service history
-
-carHistory.addEventListener("change", () => {
-  const selectedCarId = carHistory.value;
-  
-  // Only load if the value isn't the empty placeholder string
-  if (selectedCarId) {
-    loadServiceHistory(selectedCarId);
-  } else {
-    historyList.innerHTML = ""; 
-  }
-});
-
 //media loader funtion
 
 async function loadMedia(serviceId, containerId) {
@@ -866,22 +525,30 @@ img.addEventListener("click", () => {
   } catch (err) {
     console.log("Media load failed");
   }
-}
 
-const modal = document.getElementById("imageModal");
-const closeBtn = document.querySelector(".image-close");
+}
+const modal =
+  document.getElementById("imageModal");
+
+const closeBtn =
+  document.querySelector(".image-close");
 
 if (closeBtn) {
+
   closeBtn.onclick = () => {
     modal.style.display = "none";
   };
+
 }
 
 window.onclick = (event) => {
+
   if (event.target === modal) {
     modal.style.display = "none";
   }
+
 };
+
 
 //toast function
 

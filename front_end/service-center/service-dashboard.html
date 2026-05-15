@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../style.css">
    
     <title>service-center dashboard</title>
 </head>
@@ -20,7 +20,10 @@
 <!-- navigation bar -->
   <div class="navbar">
  <a href="service-dashboard.html" class="active">Dashboard</a>
-  <a href="manage_service.html" >Manage Services</a>
+  <a href="add-mechanic.html" >Mechanics</a>
+    <a href="manage-services.html" >Manage Services</a>
+    <a href="service-history.html" >History</a>
+
 </div>
 
   <div class="section-card">
@@ -28,15 +31,6 @@
   <ul id="serviceList"></ul>
 </div>
 
-<div class="section-card">
-  <div class="section-header">Completed Services</div>
-  <ul id="completedServiceList"></ul>
-</div>
-
-<div class="section-card">
-  <div class="section-header">Cancelled Services</div>
-  <ul id="cancelledServiceList"></ul>
-</div>
 
 <div id="imageModal" class="image-modal">
   <span class="image-close">&times;</span>
@@ -47,6 +41,6 @@
 
 
   <script type="module" src="service-dashboard.js"></script>
-  <script type="module" src="service.js"></script>
+  <script type="module" src="add-mechanic.js"></script>
 </body>
 </html>

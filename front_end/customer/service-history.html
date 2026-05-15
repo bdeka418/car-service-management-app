@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Service History
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="./customer.css"
+  >
+
+</head>
+
+<body>
+
+  <!-- =========================
+     MOBILE MENU BUTTON
+========================= -->
+
+<button id="menuToggle" class="menu-toggle">
+  ☰
+</button>
+
+<!-- =========================
+     SIDEBAR OVERLAY
+========================= -->
+
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+<div
+  id="mobileDrawer"
+  class="mobile-drawer"
+>
+
+  <div class="drawer-top">
+
+    <h2>
+      Customer Panel
+    </h2>
+
+  </div>
+
+  <div class="drawer-links">
+
+    <a href="./dashboard.html">
+      Dashboard
+    </a>
+
+    <a href="./my-vehicles.html">
+      My Vehicles
+    </a>
+
+    <a href="./my-services.html">
+      My Services
+    </a>
+
+    <a
+      href="./service-history.html"
+      class="active-link"
+    >
+      Service History
+    </a>
+
+  </div>
+
+  <!-- BOTTOM -->
+
+  <div class="drawer-bottom">
+
+    <!-- USER CARD -->
+
+    <a
+  href="./customer-profile.html"
+  class="drawer-user-card"
+>
+
+      <div class="drawer-user-left">
+
+        <div
+          class="drawer-user-avatar"
+          id="drawerUserAvatar"
+        >
+          U
+        </div>
+
+        <div class="drawer-user-info">
+
+          <h4 id="drawerUserName">
+            User
+          </h4>
+
+          <p>
+            View Profile
+          </p>
+
+        </div>
+
+      </div>
+
+      <span class="drawer-user-arrow">
+        ˅
+      </span>
+
+    </a>
+
+    <!-- LOGOUT -->
+
+    <button
+      id="logoutBtn"
+      class="drawer-logout-btn"
+    >
+      ⏻ Logout
+    </button>
+
+  </div>
+
+</div>
+<!-- =========================
+     CUSTOMER SIDEBAR
+========================= -->
+
+
+  <div
+  id="historyLayout"
+  class="history-layout"
+>
+
+    <!-- =========================
+         LEFT PANEL
+    ========================== -->
+
+    <div class="history-sidebar">
+
+      <!-- TOP -->
+      <div class="history-sidebar-top">
+
+        <h2>
+          Service History
+        </h2>
+
+        <p>
+          All service records and tracking
+        </p>
+
+      </div>
+
+      <!-- SEARCH -->
+      <div class="history-search-box">
+
+        <input
+          type="text"
+          id="historySearch"
+          placeholder="Search service..."
+        >
+
+      </div>
+
+      <!-- LIST -->
+      <div
+        id="historyList"
+        class="history-list"
+      ></div>
+
+    </div>
+
+    <!-- =========================
+         RIGHT PANEL
+    ========================== -->
+
+    <div class="details-panel">
+
+      <!-- EMPTY STATE -->
+      <div
+        id="emptyState"
+        class="details-empty"
+      >
+
+        <h2>
+          Select a Service
+        </h2>
+
+        <p>
+          Click a service from the left
+          to view complete details.
+        </p>
+
+      </div>
+
+      <!-- DETAILS CONTENT -->
+      <div
+        id="detailsContent"
+        style="display:none;"
+      >
+
+        <!-- TOPBAR -->
+        <div class="details-topbar">
+          <button id="backBtn">
+             ←
+          </button>
+
+          <div>
+
+            <h2 class="details-page-title">
+              Service Details
+            </h2>
+
+            <div class="details-breadcrumb">
+
+              Service History >
+              <span id="breadcrumbServiceId"></span>
+
+            </div>
+
+          </div>
+
+          <div
+            id="topStatusBadge"
+            class="status-badge"
+          ></div>
+
+        </div>
+
+        <!-- PAGE -->
+        <div class="details-page-container">
+
+          <!-- SECTION 1 -->
+          <div class="details-section">
+
+            <div class="details-section-heading">
+
+              <div class="section-number">
+                1
+              </div>
+
+              <h3>
+                SERVICE HEADER
+              </h3>
+
+            </div>
+
+            <div class="details-card service-header-card">
+
+              <div class="service-header-left">
+
+                <img
+                  id="carImage"
+                  class="service-car-image"
+                  src="./broken-car.png"
+                >
+
+                <div class="service-header-info">
+
+                  <div
+                    id="serviceId"
+                    class="service-id"
+                  ></div>
+
+                  <div
+                    id="carTitle"
+                    class="service-car-title"
+                  ></div>
+
+                  <div
+                    id="headerStatusBadge"
+                    class="status-badge"
+                  ></div>
+
+                </div>
+
+              </div>
+
+              <div class="schedule-card">
+
+                <div class="schedule-icon">
+                  📅
+                </div>
+
+                <div
+                  id="scheduledDate"
+                  class="schedule-date"
+                ></div>
+
+                <div
+                  id="scheduledTime"
+                  class="schedule-time"
+                ></div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- SECTION 2 -->
+          <div class="details-section">
+
+            <div class="details-section-heading">
+
+              <div class="section-number">
+                2
+              </div>
+
+              <h3>
+                SERVICE INFORMATION
+              </h3>
+
+            </div>
+
+            <div class="details-card">
+
+              <div
+                id="serviceInfoGrid"
+                class="service-info-grid"
+              ></div>
+
+            </div>
+
+          </div>
+
+          <!-- SECTION 3 -->
+          <div class="details-section">
+
+            <div class="details-section-heading">
+
+              <div class="section-number">
+                3
+              </div>
+
+              <h3>
+                SERVICE TIMELINE
+              </h3>
+
+            </div>
+
+            <div class="details-card">
+
+              <div
+                id="timelineContainer"
+                class="timeline-container"
+              ></div>
+
+            </div>
+
+          </div>
+
+          <!-- SECTION 4 -->
+          <div class="details-section">
+
+            <div class="details-section-heading">
+
+              <div class="section-number">
+                4
+              </div>
+
+              <h3>
+                SERVICE MEDIA GALLERY
+              </h3>
+
+            </div>
+
+            <div class="details-card">
+
+              <div
+                id="mediaContainer"
+                class="media-sections"
+              ></div>
+
+            </div>
+
+          </div>
+
+          <!-- SECTION 5 -->
+          <div
+            id="completionSection"
+            class="details-section"
+            style="display:none;"
+          >
+
+            <div class="details-section-heading">
+
+              <div class="section-number">
+                5
+              </div>
+
+              <h3>
+                SERVICE COMPLETION
+              </h3>
+
+            </div>
+
+            <div class="details-card completion-card">
+
+              <div
+                id="completionGrid"
+                class="completion-grid"
+              ></div>
+
+            </div>
+
+          </div>
+
+          <!-- SECTION 6 -->
+
+<div
+  id="cancelSection"
+  class="details-section"
+  style="display:none;"
+>
+
+  <div class="details-section-heading">
+
+    <div class="section-number cancel-number">
+      6
+    </div>
+
+    <h3 class="cancel-heading">
+      CANCELLATION DETAILS
+    </h3>
+
+  </div>
+
+  <div class="details-card cancel-card">
+
+    <div
+      id="cancelGrid"
+      class="completion-grid"
+    ></div>
+
+  </div>
+
+</div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+   </div>
+
+
+
+<script
+    type="module"
+    src="./service-history.js"
+  ></script>
+
+</body>
+
+</html>

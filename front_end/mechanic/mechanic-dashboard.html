@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mechanic Dashboard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+  <div class="sidebar" id="sidebar">
+
+  <h3>Menu</h3>
+
+ <a href="mechanic-dashboard.html" class="active">🏠 Dashboard</a>
+<a href="mechanic-history.html">📜 History</a>
+
+</div>
+
+
+<div class="top-bar">
+
+  <button onclick="toggleMenu()">☰</button>
+
+  <h2><i class="fa-solid fa-wrench"></i> Mechanic Dashboard</h2>
+
+  <button id="logoutBtn">
+    <i class="fa-solid fa-right-from-bracket"></i> Logout
+  </button>
+
+</div>
+
+<div class="dashboard-container">
+  <h3><span class="accent-bar"></span> Assigned Jobs</h3>
+  <ul id="jobList"></ul>
+</div>
+
+<div id="toastContainer" class="toast-container"></div>
+
+<script type="module" src="mechanic-dashboard.js"></script>
+<script>
+function toggleMenu() {
+  const sidebar = document.getElementById("sidebar");
+  sidebar.classList.toggle("active");
+}
+
+// 🔥 auto close on click
+document.addEventListener("click", function(e) {
+  const sidebar = document.getElementById("sidebar");
+
+  if (!sidebar.contains(e.target) && !e.target.closest("button")) {
+    sidebar.classList.remove("active");
+  }
+});
+</script>
+
+</body>
+</html>

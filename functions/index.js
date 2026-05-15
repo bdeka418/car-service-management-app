@@ -270,3 +270,219 @@ await transporter.sendMail({
 
 return { success: true };
 });
+
+//password changed alert function
+
+exports.sendPasswordChangedEmail = onCall(
+  { secrets: ["GMAIL_EMAIL", "GMAIL_PASSWORD"] },
+  async (request) => {
+
+    if (!request.auth) {
+      throw new Error("Unauthorized");
+    }
+
+    const user =
+    await admin.auth().getUser(
+      request.auth.uid
+    );
+
+    await transporter.sendMail({
+
+      from:
+      `"AutoCare247 Security" <autocare247.app@gmail.com>`,
+
+      to: user.email,
+
+      subject: "Your Password Was Changed",
+
+      html: `
+        <div style="font-family:Arial;padding:20px;">
+
+          <h2 style="color:#6d5dfc;">
+            Password Updated Successfully
+          </h2>
+
+          <p>Hello,</p>
+
+          <p>
+            Your AutoCare247 account password
+            has been changed successfully.
+          </p>
+
+          <p>
+            If this action was not performed by you,
+            reset your password immediately.
+          </p>
+
+          <br>
+
+          <p>
+            Regards,<br>
+            AutoCare247 Security Team
+          </p>
+
+        </div>
+      `
+    });
+
+    return {
+      success: true
+    };
+
+  }
+);
+
+//email verification mail send trigger function
+
+exports.sendVerificationEmail = onCall(
+  { secrets: ["GMAIL_EMAIL", "GMAIL_PASSWORD"] },
+  async (request) => {
+
+    if (!request.auth) {
+      throw new Error("Unauthorized");
+    }
+
+    const uid = request.auth.uid;
+
+    const user =
+    await admin.auth().getUser(uid);
+
+    if (user.emailVerified) {
+
+      return {
+        success: false,
+        message: "Email already verified"
+      };
+
+    }
+
+    const verificationLink =
+    await admin
+    .auth()
+    .generateEmailVerificationLink(
+      user.email
+    );
+
+    await transporter.sendMail({
+
+      from:
+      `"AutoCare247" <autocare247.app@gmail.com>`,
+
+      to: user.email,
+
+      subject:
+      "Verify Your Email",
+
+      html: `
+        <h2>Email Verification</h2>
+
+        <p>Hello ${user.displayName || "User"},</p>
+
+        <p>Please verify your email:</p>
+
+        <a href="${verificationLink}">
+          Verify Email
+        </a>
+
+        <br><br>
+
+        <p>
+          AutoCare247 Team
+        </p>
+      `
+    });
+
+    return {
+      success: true
+    };
+
+  }
+);
+
+//email verfication alert function
+
+exports.sendEmailVerifiedSuccessEmail = onCall(
+  { secrets: ["GMAIL_EMAIL", "GMAIL_PASSWORD"] },
+  async (request) => {
+
+    if (!request.auth) {
+      throw new Error("Unauthorized");
+    }
+
+    const user =
+    await admin.auth().getUser(
+      request.auth.uid
+    );
+
+    if (!user.emailVerified) {
+      throw new Error("Email not verified yet");
+    }
+
+    await transporter.sendMail({
+
+      from:
+      `"AutoCare247 Security" <autocare247.app@gmail.com>`,
+
+      to: user.email,
+
+      subject: "Email Verified Successfully",
+
+      html: `
+        <div style="font-family:Arial;padding:20px;">
+
+          <h2 style="color:#22c55e;">
+            Email Verified Successfully
+          </h2>
+
+          <p>Hello,</p>
+
+          <p>
+            Your email address has been verified successfully.
+          </p>
+
+          <p>
+            Your AutoCare247 account now has
+            full verification enabled.
+          </p>
+
+          <br>
+
+          <p>
+            Regards,<br>
+            AutoCare247 Security Team
+          </p>
+
+        </div>
+      `
+    });
+
+    return {
+      success: true
+    };
+
+  }
+);
+
+//logout all devices function
+
+exports.logoutAllDevices = onCall(
+  async (request) => {
+
+    if (!request.auth) {
+      throw new Error("Unauthorized");
+    }
+
+    const uid =
+    request.auth.uid;
+
+    // revoke all refresh tokens
+    await admin
+    .auth()
+    .revokeRefreshTokens(uid);
+
+    return {
+      success: true
+    };
+
+  }
+);

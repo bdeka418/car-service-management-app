@@ -421,22 +421,39 @@ button[data-action="complete"] {
 
 
 /* ===== INPUT FIELDS (PRO STYLE) ===== */
+/* ===== INPUT FIELDS (FIXED UI) ===== */
 input,
 select {
   width: 100%;
   padding: 12px 14px;
 
-  box-sizing: border-box;   /* 🔥 THIS IS THE FIX */
+  box-sizing: border-box;
 
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border: 1px solid #d1d5db;
 
+  background: #ffffff; /* 🔥 FIX: white background */
   font-size: 14px;
   color: #111827;
 
   transition: all 0.25s ease;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* ===== INPUT HOVER + ACTIVE ===== */
+input:hover {
+  border-color: #9ca3af;
+}
+
+input:focus {
+  background: #ffffff;
+  border-color: #2563eb;
+
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  outline: none;
+}
+/* subtle inner shadow */
+input {
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
 }
 textarea {
   width: 100% !important;   /* 🔥 force full width */
@@ -462,8 +479,8 @@ textarea:focus {
 /* placeholder */
 input::placeholder,
 textarea::placeholder {
-  color: #9ca3af;
-  line-height: 1.4;
+  color: #6b7280;   /* 🔥 FIX: darker */
+  font-weight: 500;
 }
 
 /* spacing fix */
@@ -549,4 +566,552 @@ h3 {
   border-bottom: 2px solid #38bdf8;
   pointer-events: none;   /* 🔥 disables clicking */
   opacity: 0.8;
+}
+
+/* active mechanics */
+
+/* Container */
+#availableMechanics {
+  display: flex;
+  gap: 15px;
+  overflow-x: auto;
+  padding: 10px 0;
+}
+
+/* Each mechanic card */
+.mechanic-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 70px;
+}
+
+/* Circle profile */
+.mechanic-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+/* Name */
+.mechanic-name {
+  margin-top: 5px;
+  font-size: 12px;
+  text-align: center;
+}
+
+
+/* service card css */
+.service-card {
+  background: linear-gradient(135deg, #0f172a, #020617);
+  border-radius: 14px;
+  padding: 20px;
+  color: white;
+  margin-bottom: 15px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  position: relative;
+  padding-bottom: 70px; /* space for bottom bar */
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.car-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.see-details {
+  color: gold;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.status-bar {
+  width: 60%;
+  border-radius: 20px;
+  background: linear-gradient(90deg, #7f1d1d, #facc15);
+  color: white;
+  font-size: 13px;
+  transition: all 0.5s ease;
+   min-width: 250px;
+  max-width: 60%;
+  text-align: center;
+  padding: 10px 20px;
+  border-radius: 30px;
+  background: linear-gradient(90deg, #8b0000, #facc15);
+  color: white;
+ 
+}
+.status-text {
+  display: inline-block;
+  transition: all 0.3s ease;
+}
+
+.status-wrapper {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* OLD STYLE CARD (COMPLETELY SEPARATE) */
+.service-tile-old {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  background: #f5f5f5;
+  padding: 16px 20px;
+  border-radius: 10px;
+
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  margin-bottom: 12px;
+}
+
+/* LEFT SIDE */
+.tile-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* RIGHT SIDE (BUTTON AREA) */
+.tile-right {
+  display: flex;
+  align-items: center;
+}
+
+/* BUTTON STYLE (OLD ONLY)active services */
+.service-tile-old button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.service-tile-old button:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+/* 🔴 CANCEL BUTTON */
+.service-tile-old .btn-cancel {
+  background: #dc2626; /* red */
+  color: white;
+}
+
+.service-tile-old .btn-cancel:hover {
+  background: #b91c1c; /* darker red */
+}
+
+/* ============================= */
+/* 🔥 MECHANIC PAGE (NEW DESIGN) */
+/* ============================= */
+
+/* TOP BAR */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1e293b;
+  color: white;
+  padding: 14px 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.topbar .logo {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.topbar .nav-links a {
+  color: #cbd5f5;
+  margin: 0 10px;
+  text-decoration: none;
+}
+
+.topbar .nav-links .active {
+  color: white;
+  border-bottom: 2px solid #3b82f6;
+}
+
+/* ADD MECHANIC CARD */
+.add-mechanic-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-md);
+}
+
+/* FORM ROW */
+.form-row {
+  display: flex;
+  gap: 10px;
+}
+
+.form-row input {
+  flex: 1;
+}
+
+.form-row button {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.form-row button:hover {
+  background: var(--primary-hover);
+}
+
+/* TEAM SECTION */
+.team-section {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-md);
+}
+
+/* HEADER */
+.team-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+/* SEARCH */
+.team-header input {
+  width: 220px;
+}
+
+/* MECHANIC LIST */
+.mechanic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* NEW CARD STYLE */
+.mechanic-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 15px;
+  transition: 0.2s;
+}
+.mechanic-item {
+  display: grid !important;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  align-items: center;
+  gap: 20px;
+}
+.mechanic-item > div:not(:last-child) {
+  border-right: 1px solid #e5e7eb;
+  padding-right: 16px;
+}
+
+.mechanic-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mechanic-stats {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.mechanic-status {
+  text-align: center;
+}
+
+.mechanic-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mechanic-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* LEFT SIDE */
+.mechanic-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* AVATAR */
+.avatar-circle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #3b82f6;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+/* TEXT */
+.mechanic-name {
+  font-weight: 600;
+}
+
+.mechanic-email {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* STATUS */
+.status-badge {
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-busy {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+/* ACTION BUTTONS */
+.action-buttons button {
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-left: 5px;
+  cursor: pointer;
+}
+.btn-edit {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-edit:hover {
+  background: #e2e8f0;
+}
+
+.btn-delete {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-delete:hover {
+  background: #fecaca;
+}
+
+.mechanic-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mechanic-stats {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.mechanic-status {
+  text-align: center;
+}
+
+.mechanic-actions {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+
+  .mechanic-item {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .mechanic-actions {
+    justify-content: flex-end;
+  }
+
+  .team-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .team-header input {
+    width: 100%;
+  }
+}
+
+/* avatar wrapper */
+.avatar-wrapper {
+  position: relative;
+}
+
+/* avatar upgrade */
+.avatar-circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #60a5fa, #6366f1);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* status dot */
+.status-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+.dot-active {
+  background: #22c55e;
+}
+
+.dot-busy {
+  background: #f59e0b;
+}
+
+/* text layout */
+.mechanic-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; 
+  gap: 2px;
+}
+
+.mechanic-name {
+  font-size: 18px;       
+  font-weight: 700;      
+  color: #111827;
+  text-align: left;       
+}
+
+.mechanic-email {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.mechanic-phone {
+  font-size: 13px;
+  color: #374151;
+}
+.mechanic-left {
+  text-align: left; 
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  left: -220px;
+  top: 0;
+  width: 220px;
+  height: 100%;
+
+  background: var(--card);   /* 🔥 FIX COLOR */
+  color: var(--text);
+
+  padding: 20px;
+  transition: 0.3s;
+
+  z-index: 9999;             /* 🔥 FIX: bring to front */
+  box-shadow: var(--shadow-lg);
+}
+
+.sidebar.active {
+  left: 0;
+  
+}
+
+.sidebar a.active {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.sidebar a {
+  display: block;
+  color: var(--text);
+  margin: 15px 0;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.sidebar a:hover {
+  color: var(--primary);
+}
+
+/* menu button */
+.top-bar button:first-child {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.sidebar.active ~ .dashboard-container,
+.sidebar.active ~ .top-bar {
+  margin-left: 220px;
+  transition: 0.3s;
+}
+
+.vehicle-image{
+  width:100%;
+  height:180px;
+  object-fit:cover;
+  border-radius:14px;
+  margin-bottom:12px;
 }

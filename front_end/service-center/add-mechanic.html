@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mechanics</title>
+   <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="topbar">
+  <div class="logo">AutoService</div>
+  <div class="nav-links">
+    <a href="service-dashboard.html">Dashboard</a>
+    <a href="add-mechanic.html" class="active">Mechanics</a>
+    <a href="manage-services.html">Manage Services</a>
+    <a href="service-history.html">History</a>
+  </div>
+  <div class="logout">Logout</div>
+</div>
+
+<!-- ADD MECHANIC CARD -->
+<div class="card add-mechanic-card">
+  <h3>Add Mechanic</h3>
+
+  <div class="form-row">
+    <input type="text" id="mechName" placeholder="Mechanic Name">
+    <input type="email" id="mechEmail" placeholder="Mechanic Email">
+    <button id="addMechanicBtn" onclick="addMechanic()">+ Add Mechanic</button>
+  </div>
+</div>
+
+<!-- TEAM SECTION -->
+<div class="card team-section">
+  <div class="team-header">
+    <h3>Current Mechanics</h3>
+    <input type="text" id="searchInput" placeholder="Search mechanic...">
+  </div>
+
+  <div id="mechanicList" class="mechanic-list">
+    <!-- JS WILL RENDER CARDS HERE -->
+  </div>
+</div>
+
+<script type="module" src="add-mechanic.js"></script>
+
+</body>
+</html>
