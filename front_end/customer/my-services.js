@@ -465,7 +465,7 @@ liveStartedBy: null,
 {
 action: "service_requested",
 
-at: serverTimestamp(),
+at: new Date(),
 
 clientAt: new Date(),
 
@@ -1156,7 +1156,7 @@ const serviceData =
   {
     action: "service_cancelled",
 
-    at: serverTimestamp(),
+    at: new Date(),
 
     clientAt: new Date(),
 

@@ -2,38 +2,156 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="./service.css">
   <title>Assign Job</title>
 </head>
 
 <body>
 
 
-<div class="section-card">
-  <div class="section-header">Available Mechanics</div>
-  <div id="availableMechanics"></div>
+<div class="assign-job-page">
+
+  <!-- HEADER -->
+
+  <div class="assign-header">
+
+    <button
+      class="back-btn"
+      onclick="history.back()"
+    >
+      ←
+    </button>
+
+    <div>
+
+      <h1>
+        Assign Mechanic
+      </h1>
+
+      <p>
+        Choose an available mechanic for this service.
+      </p>
+
+    </div>
+
+  </div>
+
+  <!-- MAIN GRID -->
+
+  <div class="assign-layout">
+
+    <!-- LEFT -->
+
+    <div class="mechanics-panel">
+
+      <!-- SEARCH -->
+
+      <div class="mechanic-search-row">
+
+        <input
+          type="text"
+          placeholder="Search mechanic..."
+          class="mechanic-search"
+        >
+
+      </div>
+
+      <!-- LIST -->
+
+      <div
+        id="mechanicList"
+        class="mechanic-list"
+      ></div>
+
+    </div>
+
+    <!-- RIGHT -->
+
+    <div class="service-panel">
+
+      <h3>
+        Service & Vehicle Details
+      </h3>
+
+      <div
+        id="serviceDetailsCard"
+        class="service-details-card"
+      ></div>
+
+      <!-- SERVICE TYPE -->
+
+      <div class="service-type-section">
+
+        <h3>
+          Select Type of Service
+        </h3>
+
+        <p>
+          Choose the service type to assign.
+        </p>
+
+        <select
+          id="serviceTypeSelect"
+          class="service-type-dropdown"
+        >
+
+          <option value="">
+            Select service type
+          </option>
+
+          <option>
+            Regular Servicing
+          </option>
+          <option>
+            Accidental Repair
+          </option>
+
+          <option>
+            General Service
+          </option>
+
+          <option>
+            Engine Repair
+          </option>
+
+          <option>
+            Brake Service
+          </option>
+
+          <option>
+            AC Service
+          </option>
+
+          <option>
+            Wheel Alignment
+          </option>
+
+          <option>
+            Diagnostics
+          </option>
+
+          <option>
+            Other
+          </option>
+
+        </select>
+
+      </div>
+
+      <!-- ASSIGN -->
+
+      <button
+        id="assignMechanicBtn"
+        class="assign-mechanic-btn"
+      >
+        Assign Selected Mechanic
+      </button>
+
+    </div>
+
+  </div>
+
 </div>
-
-
-<div class="section-card">
-  <div class="section-header">Assign Mechanic</div>
-
-  <div id="serviceInfo"></div>
-</div>
-
-
-
-<div class="section-card">
-  <div class="section-header">Select Mechanic</div>
-
-  <select id="mechanicSelect"></select>
-
-  <br><br>
-
-  <button id="startServiceBtn">Start Service</button>
-</div>
-
-<button onclick="window.history.back()">⬅ Back</button>
 
 <script type="module" src="assign-job.js"></script>
 

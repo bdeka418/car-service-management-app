@@ -547,15 +547,18 @@ recentServicesList.innerHTML = "";
    UPCOMING SERVICE
 ========================= */
 
-const upcomingService =
+/* =========================
+   UPCOMING SERVICE
+========================= */
+
+const upcomingServices =
 
 services
 
 .filter(service =>
 
-  activeStatuses.includes(
-    service.serviceStatus
-  )
+  service.serviceStatus ===
+  "pending_assignment"
 
 )
 
@@ -569,11 +572,37 @@ services
 
   return bTime - aTime;
 
-})
+});
 
-[0];
 
-if(upcomingService){
+// EMPTY STATE
+
+if(upcomingServices.length === 0){
+
+  upcomingServiceCard.innerHTML = `
+
+    <div class="empty-upcoming-service">
+
+      <div class="empty-service-icon">
+        📅
+      </div>
+
+      <h3>
+        No Upcoming Services
+      </h3>
+
+      <p>
+        New service bookings will appear here.
+      </p>
+
+    </div>
+
+  `;
+
+}else{
+
+  const upcomingService =
+  upcomingServices[0];
 
   const car =
   upcomingService.carSnapshot || {};
@@ -621,8 +650,14 @@ if(upcomingService){
           <span class="service-status-pill">
 
             ${
-              upcomingService.serviceStatus
-              ?.replaceAll("_"," ")
+              (
+                upcomingService.serviceStatus || ""
+              )
+              .replaceAll("_"," ")
+              .replace(
+                /\b\w/g,
+                l => l.toUpperCase()
+              )
             }
 
           </span>
@@ -687,18 +722,6 @@ if(upcomingService){
         View Details
 
       </a>
-
-    </div>
-
-  `;
-
-}else{
-
-  upcomingServiceCard.innerHTML = `
-
-    <div class="empty-upcoming-service">
-
-      <p>No upcoming services</p>
 
     </div>
 

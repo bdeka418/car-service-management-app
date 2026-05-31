@@ -760,7 +760,7 @@ serviceInfoGrid.innerHTML = `
 
   <div class="info-value">
     ${
-      service.serviceCenter ||
+      data?.assignedServiceCenterId ||
       "Not Assigned"
     }
   </div>
@@ -775,7 +775,7 @@ serviceInfoGrid.innerHTML = `
 
   <div class="info-value">
     ${
-      service.mechanic ||
+      data?.mechanicId ||
       "Not Assigned"
     }
   </div>
@@ -805,7 +805,7 @@ serviceInfoGrid.innerHTML = `
 
   <div class="info-value">
     ${
-      service.owner ||
+       data.ownerSnapshot?.name ||
       "Customer"
     }
   </div>

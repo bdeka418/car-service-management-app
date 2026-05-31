@@ -5,57 +5,280 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mechanic Dashboard</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="style.css">
-
+  <link rel="stylesheet" href="mechanic.css">
 </head>
 
 <body>
 
-  <div class="sidebar" id="sidebar">
+<div class="mechanic-layout">
 
-  <h3>Menu</h3>
+  <!-- SIDEBAR -->
+  <aside class="mechanic-sidebar" id="mechanicSidebar">
 
- <a href="mechanic-dashboard.html" class="active">🏠 Dashboard</a>
-<a href="mechanic-history.html">📜 History</a>
+    <div class="sidebar-top">
 
-</div>
+      <div class="sidebar-logo">
 
+        <div class="logo-icon">
+          🔧
+        </div>
 
-<div class="top-bar">
+        <div>
+          <h2>AutoCare</h2>
+          <p>Mechanic Panel</p>
+        </div>
 
-  <button onclick="toggleMenu()">☰</button>
+      </div>
 
-  <h2><i class="fa-solid fa-wrench"></i> Mechanic Dashboard</h2>
+    </div>
 
-  <button id="logoutBtn">
-    <i class="fa-solid fa-right-from-bracket"></i> Logout
+    <nav class="sidebar-nav">
+
+      <a
+        href="mechanic-dashboard.html"
+        class="active"
+      >
+
+        <i class="fa-solid fa-house"></i>
+        Dashboard
+
+      </a>
+
+      <a href="active-service.html">
+
+        <i class="fa-solid fa-screwdriver-wrench"></i>
+        Active Jobs
+
+      </a>
+
+      <a href="#">
+
+        <i class="fa-solid fa-clock-rotate-left"></i>
+        Upcoming Jobs
+
+      </a>
+
+      <a href="mechanic-history.html">
+
+        <i class="fa-solid fa-file-lines"></i>
+        Job History
+
+      </a>
+
+      <a href="#">
+
+        <i class="fa-solid fa-star"></i>
+        Ratings
+
+      </a>
+
+      <a href="#">
+
+        <i class="fa-solid fa-bell"></i>
+        Notifications
+
+      </a>
+
+      <a href="#">
+
+        <i class="fa-solid fa-gear"></i>
+        Settings
+
+      </a>
+
+    </nav>
+
+    <button
+      id="logoutBtn"
+      class="logout-btn"
+    >
+
+      Logout
+
+    </button>
+  </aside>
+  
+  <button id="menuToggle" class="menu-toggle">
+      <i class="fa-solid fa-bars"></i>
   </button>
 
-</div>
+  <!-- MAIN -->
+  <main class="mechanic-main">
 
-<div class="dashboard-container">
-  <h3><span class="accent-bar"></span> Assigned Jobs</h3>
-  <ul id="jobList"></ul>
-</div>
+    <!-- HEADER -->
+    <header class="dashboard-header">
 
-<div id="toastContainer" class="toast-container"></div>
+      <div class="header-left">
+
+    
+
+        <div>
+
+          <h1>
+
+            Dashboard
+
+          </h1>
+
+          <p>
+
+            Welcome back mechanic 👋
+
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="header-right">
+
+        <div class="notification-bell">
+
+          🔔
+
+        </div>
+
+      </div>
+
+    </header>
+
+    <!-- STATS -->
+    <section class="stats-grid">
+
+      <div class="stat-card">
+
+        <div class="stat-icon blue">
+          🔧
+        </div>
+
+        <div>
+
+          <h2 id="activeJobsCount">
+            0
+          </h2>
+
+          <p>
+            Active Jobs
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="stat-card">
+
+        <div class="stat-icon orange">
+          📅
+        </div>
+
+        <div>
+
+          <h2 id="upcomingJobsCount">
+            0
+          </h2>
+
+          <p>
+            Upcoming Jobs
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="stat-card">
+
+        <div class="stat-icon green">
+          ✅
+        </div>
+
+        <div>
+
+          <h2 id="completedJobsCount">
+            0
+          </h2>
+
+          <p>
+            Completed
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="stat-card">
+
+        <div class="stat-icon purple">
+          ⭐
+        </div>
+
+        <div>
+
+          <h2>
+            4.8
+          </h2>
+
+          <p>
+            Rating
+          </p>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- JOB SECTION -->
+    <section class="jobs-grid">
+
+      <!-- ACTIVE -->
+      <div class="dashboard-card">
+
+        <div class="card-header">
+
+          <h3>
+            Current Active Jobs
+          </h3>
+
+          <a href="#">
+            View All
+          </a>
+
+        </div>
+
+        <div id="activeJobsList">
+
+        </div>
+
+      </div>
+
+      <!-- UPCOMING -->
+      <div class="dashboard-card">
+
+        <div class="card-header">
+
+          <h3>
+            Upcoming Assigned Jobs
+          </h3>
+
+          <a href="#">
+            View All
+          </a>
+
+        </div>
+
+        <div id="upcomingJobsList">
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+</div>
 
 <script type="module" src="mechanic-dashboard.js"></script>
-<script>
-function toggleMenu() {
-  const sidebar = document.getElementById("sidebar");
-  sidebar.classList.toggle("active");
-}
-
-// 🔥 auto close on click
-document.addEventListener("click", function(e) {
-  const sidebar = document.getElementById("sidebar");
-
-  if (!sidebar.contains(e.target) && !e.target.closest("button")) {
-    sidebar.classList.remove("active");
-  }
-});
-</script>
 
 </body>
 </html>

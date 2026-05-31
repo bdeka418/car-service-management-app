@@ -73,20 +73,6 @@ setGlobalOptions({ region: "asia-south1" });
 
 const db = admin.firestore();
 
-/**
- * when media is uploaded → mark service hasMedia = true
- */
-exports.onMediaUpload = onDocumentCreated(
-  "services/{serviceId}/media/{mediaId}",
-  async (event) => {
-    const serviceId = event.params.serviceId;
-
-    await db.doc(`services/${serviceId}`).update({
-      hasMedia: true,
-      mediaUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  }
-);
 
 
 //delete trigger
@@ -94,52 +80,66 @@ exports.onMediaUpload = onDocumentCreated(
 async function recalculateStep(serviceId) {
 
   const mediaSnap = await db
+  
     .collection("services")
     .doc(serviceId)
     .collection("media")
     .get();
 
-  let hasBefore = false;
-  let hasDuring = false;
-  let hasAfter = false;
+  let hasBefore = false, hasDuring = false, hasAfter = false;
+  let photoCount = 0, videoCount = 0;  // ✅ ADD counters
 
   mediaSnap.forEach(doc => {
-    const stage = doc.data().stage;
+    const data = doc.data();
+    const stage = data.stage;
+    const type = data.type; // "photo" or "video"
 
     if (stage === "before") hasBefore = true;
     if (stage === "during") hasDuring = true;
     if (stage === "after") hasAfter = true;
+
+    // ✅ count by type
+    if (type === "photo") photoCount++;
+    if (type === "video") videoCount++;
   });
 
   let newStep = "before";
-  let hasMedia = false;
+  let hasMedia = mediaSnap.size > 0;
 
   if (hasBefore) {
-    hasMedia = true;
     newStep = "before";
-
     if (hasDuring) {
       newStep = "during";
-
-      if (hasAfter) {
-        newStep = "after";
-      }
+      if (hasAfter) newStep = "after";
     }
   }
 
-  // no media at all
-  if (!hasBefore && !hasDuring && !hasAfter) {
-    newStep = "before";
-    hasMedia = false;
-  }
+  const mediaSummary = {
+    photoCount,
+    videoCount,
+    lastUploadAt: admin.firestore.FieldValue.serverTimestamp()
+  };
 
+  // ✅ Update service doc
   await db.doc(`services/${serviceId}`).update({
-    currentStep: newStep,
-    hasMedia: hasMedia,
+    mediaStage: newStep,
+    hasMedia,
     mediaUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    mediaSummary  // ✅ ADD to service doc too
   });
 
-  console.log("STEP RECALCULATED:", newStep);
+  // ✅ Update jobCard — find it by serviceId
+  const jobSnap = await db
+    .collection("jobCards")
+    .where("serviceId", "==", serviceId)
+    .limit(1)
+    .get();
+
+  if (!jobSnap.empty) {
+    await jobSnap.docs[0].ref.update({ mediaSummary });
+  }
+
+  console.log("STEP RECALCULATED:", newStep, mediaSummary);
 }
 
 // 🔥 ON UPLOAD
@@ -231,6 +231,7 @@ await db.collection("users").doc(userRecord.uid).set({
   email,
   role: "mechanic",
   serviceCenterId,
+   mechanicJoinStatus: request.data.mechanicJoinStatus || "pending",
   createdAt: admin.firestore.FieldValue.serverTimestamp(),
   mustResetPassword: true
 });
@@ -486,3 +487,69 @@ exports.logoutAllDevices = onCall(
 
   }
 );
+
+// ✅ Approve cancel request — deletes all media + marks cancelled
+exports.approveCancelRequest = onCall(async (request) => {
+  if (!request.auth) throw new Error("Unauthorized");
+
+  const { serviceId, jobId, adminNote } = request.data;
+  const storage = admin.storage();
+
+  // 1. Delete all files from Storage
+  const [files] = await storage.bucket()
+    .getFiles({ prefix: `services/${serviceId}/media/` });
+  await Promise.all(files.map(f => f.delete().catch(() => {})));
+
+  // 2. Delete media docs from Firestore
+  const mediaDocs = await db
+    .collection("services").doc(serviceId)
+    .collection("media").get();
+  await Promise.all(mediaDocs.docs.map(d => d.ref.delete()));
+
+  // 3. Mark service as cancelled
+  await db.doc(`services/${serviceId}`).update({
+    serviceStatus: "cancelled",
+    cancelApproved: true,
+    cancelledBy: request.auth.uid,
+    cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+    adminCancelNote: adminNote || "",
+    cancelRequested: false,
+    liveEnabled: false
+  });
+
+  // 4. Mark jobCard as cancelled
+  await db.doc(`jobCards/${jobId}`).update({
+    status: "cancelled",
+    cancelApproved: true,
+    cancelledAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  return { success: true };
+});
+
+// ✅ Reject cancel request — repair continues, note sent to mechanic
+exports.rejectCancelRequest = onCall(async (request) => {
+  if (!request.auth) throw new Error("Unauthorized");
+
+  const { serviceId, jobId, rejectionNote } = request.data;
+
+  await db.doc(`services/${serviceId}`).update({
+    cancelRequested: false,
+    cancelRejectedAt: admin.firestore.FieldValue.serverTimestamp(),
+    cancelRejectedBy: request.auth.uid,
+    cancelRejectionNote: rejectionNote || "",
+    history: admin.firestore.FieldValue.arrayUnion({
+      action: "cancel_rejected",
+      note: rejectionNote,
+      by: request.auth.uid,
+      at: new Date()
+    })
+  });
+
+  await db.doc(`jobCards/${jobId}`).update({
+    cancelRequested: false,
+    cancelRejectedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  return { success: true };
+});

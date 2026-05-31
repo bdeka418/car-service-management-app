@@ -1,5 +1,5 @@
 import { db,auth } from "../firebase.js";
-import { collection, doc, getDoc , query, where, getDocs,  deleteDoc } 
+import { collection, doc, getDoc , query, where, getDocs,  deleteDoc, updateDoc } 
 from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 console.log("add-mechanic.js loaded");
@@ -13,11 +13,21 @@ let currentUser = null;
 let allMechanics = [];
 let mechanicStatusMap = {};
 
+// PAGINATION
+let currentMechanicPage = 1;
+let currentRequestPage = 1;
+
+const ITEMS_PER_PAGE = 5;
+
+// add-mechanic.js
+let searchListenerAttached = false;  
+
+
 // 🔐 Protect page + role check
 onAuthStateChanged(auth, async (user) => {
 
   if (!user) {
-    window.location.href = "index.html";
+    window.location.href = "../index.html";
     return;
   }
 
@@ -28,7 +38,7 @@ onAuthStateChanged(auth, async (user) => {
 
   if (!userSnap.exists()) {
   console.log("User doc missing");
-  window.location.href = "index.html";
+  window.location.href = "../index.html";
   return;
 }
 
@@ -42,7 +52,7 @@ if (userSnap.data().mustResetPassword) {
 
 // 🔥 Role-based redirect
 if (role !== "service_center") {
-  window.location.href = "index.html";
+  window.location.href = "../index.html";
   return;
 }
 
@@ -64,7 +74,20 @@ window.addMechanic = async function () {
 
 const btn = document.getElementById("addMechanicBtn");  btn.disabled = true;
 
-  const name = document.getElementById("mechName").value;
+ const name =
+
+mechName.value
+.trim()
+.toLowerCase()
+.split(" ")
+.map(word =>
+
+  word.charAt(0).toUpperCase() +
+  word.slice(1)
+
+)
+.join(" ");
+
   const email = document.getElementById("mechEmail").value;
 
   if (!name || !email) {
@@ -82,10 +105,11 @@ const btn = document.getElementById("addMechanicBtn");  btn.disabled = true;
     }
 
     await createMechanic({
-      name,
-      email,
-      serviceCenterId: currentUser.uid
-    });
+  name,
+  email,
+  serviceCenterId: currentUser.uid,
+  mechanicJoinStatus: "pending"
+});
 
     showToast("Mechanic added & email sent", "success");
 
@@ -152,10 +176,33 @@ jobSnap.forEach(doc => {
 }
 });
 // 🔥 CACHE ALL MECHANICS FOR SEARCH
-    allMechanics = snapshot.docs.map(doc => ({
+    const allDocs = snapshot.docs.map(doc => ({
   id: doc.id,
   ...doc.data()
 }));
+
+// ✅ approved + legacy mechanics
+allMechanics = allDocs.filter(mech =>
+
+  mech.mechanicJoinStatus === "approved"
+
+  ||
+
+  !mech.mechanicJoinStatus
+
+);
+
+// ✅ requested mechanics
+const requestedMechanics = allDocs.filter(mech =>
+
+  mech.mechanicJoinStatus === "requested"
+
+  ||
+
+  mech.mechanicJoinStatus === "pending"
+
+);
+renderRequestedMechanics(requestedMechanics);
 
     if (snapshot.empty) {
       mechanicList.innerHTML = `
@@ -166,8 +213,16 @@ jobSnap.forEach(doc => {
 
     mechanicList.innerHTML = "";
 
-const searchInput = document.getElementById("searchInput");
-const existingSearch = searchInput.value.toLowerCase();
+const searchInput =
+document.getElementById(
+  "searchInput"
+);
+
+const existingSearch =
+searchInput
+? searchInput.value.toLowerCase()
+: "";
+
 
 let filteredList = allMechanics;
 
@@ -178,6 +233,21 @@ if (existingSearch) {
   );
 }
    renderMechanics(filteredList, user);
+
+   // set search logic outside of loadMechanics to avoid re-attaching event listener on every load
+
+
+searchInput.oninput = (e) => {
+  const value = e.target.value.toLowerCase();
+
+  const filtered = allMechanics.filter(m =>
+    (m.name || "").toLowerCase().includes(value) ||
+    (m.email || "").toLowerCase().includes(value)
+  );
+
+  renderMechanics(filtered, currentUser);
+};
+
 
 
   } catch (error) {
@@ -194,52 +264,506 @@ if (existingSearch) {
   const mechanicList = document.getElementById("mechanicList");
   mechanicList.innerHTML = "";
 
-  for (const data of list) {
+  mechanicList.innerHTML = "";
 
-    const mechanicId = data.id;
+// =======================
+// PAGINATION
+// =======================
+
+const start =
+(currentMechanicPage - 1)
+* ITEMS_PER_PAGE;
+
+const end =
+start + ITEMS_PER_PAGE;
+
+const paginatedList =
+list.slice(start, end);
+
+// render only current page
+for (const data of paginatedList) {
+const mechanicId = data.id;
 
     // 🔍 check busy
    const isBusy = mechanicStatusMap[mechanicId] || false;
 
     const card = document.createElement("div");
-    card.className = "mechanic-item";
+    card.className = "mechanic-row";
 
-    card.innerHTML = `
-     <div class="mechanic-left">
+card.innerHTML = `
 
-  <div class="avatar-wrapper">
-    <div class="avatar-circle">
-      ${data.name?.charAt(0).toUpperCase() || "M"}
-    </div>
+  <div class="mechanic-row-left">
 
-    <span class="status-dot ${isBusy ? "dot-busy" : "dot-active"}"></span>
-  </div>
+   <div class="avatar-wrapper">
 
-  <div class="mechanic-details">
-    <div class="mechanic-name">${data.name}</div>
-    <div class="mechanic-email">${data.email}</div>
-    <div class="mechanic-phone">📞 ${data.phone || "+91 XXXXX XXXXX"}</div>
-  </div>
+  ${
+    data.profileImage
+
+    ?
+
+    `
+
+      <img
+        src="${data.profileImage}"
+        class="mechanic-avatar-image"
+      >
+
+    `
+
+    :
+
+    `
+
+      <div class="avatar-circle">
+
+        ${
+          (
+            (data.name || "M")
+            .split(" ")
+            .map(word => word[0])
+            .slice(0,2)
+            .join("")
+          ).toUpperCase()
+        }
+
+      </div>
+
+    `
+  }
+
+  <span class="status-dot ${isBusy ? "dot-busy" : "dot-active"}"></span>
 
 </div>
-      <div class="mechanic-stats">
-        Jobs Completed <br><strong>${data.jobsCompleted || 0}</strong>
-      </div>
 
-      <div class="mechanic-status">
-        <span class="status-badge ${isBusy ? "status-busy" : "status-active"}">
-          ${isBusy ? "Busy" : "Active"}
-        </span>
-      </div>
+    <div class="mechanic-meta">
 
-      <div class="mechanic-actions">
-        <button class="btn-edit">Edit</button>
-        <button class="btn-delete" onclick="deleteMechanic('${mechanicId}')">Delete</button>
-      </div>
-    `;
+      <h4>
+        ${data.name}
+      </h4>
+
+      <p>
+        ${data.email}
+      </p>
+
+      <p>
+        📞 ${data.phone || "+91 XXXXX XXXXX"}
+      </p>
+
+      <p>
+        Exp: ${data.experience || 5} Years
+      </p>
+
+    </div>
+
+  </div>
+
+  <div class="mechanic-right">
+
+    <div class="mechanic-job-count">
+
+      <span>
+        Jobs
+      </span>
+
+      <strong>
+        ${data.jobsCompleted || 0}
+      </strong>
+
+    </div>
+
+    <div class="mechanic-badge ${
+      isBusy
+      ? "badge-busy"
+      : "badge-active"
+    }">
+
+      ${
+        isBusy
+        ? "Busy"
+        : "Active"
+      }
+
+    </div>
+
+    <div class="mechanic-actions">
+
+      <button
+        class="view-details-btn"
+      >
+
+        View Details
+
+      </button>
+
+      <button
+        class="btn-delete"
+        onclick="deleteMechanic('${mechanicId}')"
+      >
+
+        Delete
+
+      </button>
+
+    </div>
+
+  </div>
+
+`;
 
     mechanicList.appendChild(card);
   }
+  renderMechanicPagination(list);
+}
+
+
+// =======================
+// MECHANIC PAGINATION
+// =======================
+
+function renderMechanicPagination(fullList){
+
+const mechanicList =
+document.getElementById(
+  "mechanicList"
+);
+
+const totalPages =
+Math.ceil(
+  fullList.length /
+  ITEMS_PER_PAGE
+);
+
+if(totalPages <= 1) return;
+
+const pagination =
+document.createElement("div");
+
+pagination.className =
+"pagination-wrapper";
+
+pagination.innerHTML = `
+
+<button
+  ${currentMechanicPage === 1 ? "disabled" : ""}
+  id="prevMechanicPage"
+>
+
+  ←
+
+</button>
+
+<span>
+
+  ${currentMechanicPage}
+  / ${totalPages}
+
+</span>
+
+<button
+  ${currentMechanicPage === totalPages ? "disabled" : ""}
+  id="nextMechanicPage"
+>
+
+  →
+
+</button>
+
+`;
+
+mechanicList.appendChild(
+  pagination
+);
+
+// PREV
+pagination.querySelector(
+  "#prevMechanicPage"
+)?.addEventListener(
+  "click",
+  () => {
+
+    currentMechanicPage--;
+
+    renderMechanics(
+      fullList,
+      currentUser
+    );
+
+  }
+);
+
+// NEXT
+pagination.querySelector(
+  "#nextMechanicPage"
+)?.addEventListener(
+  "click",
+  () => {
+
+    currentMechanicPage++;
+
+    renderMechanics(
+      fullList,
+      currentUser
+    );
+
+  }
+);
+
+}
+
+
+// 🔹 RENDER REQUESTED MECHANICS
+
+function renderRequestedMechanics(list){
+
+const newMechanicList =
+document.getElementById("newMechanicList");
+
+if(!newMechanicList) return;
+
+newMechanicList.innerHTML = "";
+
+if(list.length === 0){
+
+newMechanicList.innerHTML = `
+  <div class="empty-state">
+    No joining requests
+  </div>
+`;
+
+return;
+
+}
+
+const start =
+(currentRequestPage - 1)
+* ITEMS_PER_PAGE;
+
+const end =
+start + ITEMS_PER_PAGE;
+
+const paginatedList =
+list.slice(start, end);
+
+paginatedList.forEach(data => {
+
+const card = document.createElement("div");
+
+card.className = "mechanic-row";
+
+card.innerHTML = `
+
+<div class="mechanic-row-left">
+
+  <div class="avatar-wrapper">
+
+    ${
+      data.profileImage
+
+      ?
+
+      `
+
+        <img
+          src="${data.profileImage}"
+          class="mechanic-avatar-image"
+        >
+
+      `
+
+      :
+
+      `
+
+        <div class="avatar-circle">
+
+          ${
+            (
+              (data.name || "M")
+              .split(" ")
+              .map(word => word[0])
+              .slice(0,2)
+              .join("")
+            ).toUpperCase()
+          }
+
+        </div>
+
+      `
+    }
+
+  </div>
+
+  <div class="mechanic-meta">
+
+    <h4>
+      ${data.name}
+    </h4>
+
+    <p>
+      ${data.email}
+    </p>
+
+   <p>
+
+  ${
+    data.mechanicJoinStatus === "pending"
+
+    ?
+
+    "Invitation sent"
+
+    :
+
+    "Requested to join"
+  }
+
+</p>
+
+  </div>
+
+</div>
+
+<div class="mechanic-actions">
+
+ <button
+    class="view-details-btn"
+  >
+
+    View Details
+
+  </button>
+
+  ${
+    data.mechanicJoinStatus === "requested"
+
+    ?
+
+    `
+
+      <button
+        class="approve-btn"
+        onclick="approveMechanic('${data.id}')"
+      >
+
+        Approve Joining
+
+      </button>
+
+    `
+
+    :
+
+    `
+
+      <span class="pending-label">
+
+        Waiting For Mechanic
+
+      </span>
+
+    `
+  }
+
+</div>
+
+`;
+
+newMechanicList.appendChild(card);
+
+});
+
+}
+
+// =======================
+// REQUEST PAGINATION
+// =======================
+
+function renderRequestPagination(fullList){
+
+const newMechanicList =
+document.getElementById(
+  "newMechanicList"
+);
+
+const totalPages =
+Math.ceil(
+  fullList.length /
+  ITEMS_PER_PAGE
+);
+
+if(totalPages <= 1) return;
+
+const pagination =
+document.createElement("div");
+
+pagination.className =
+"pagination-wrapper";
+
+pagination.innerHTML = `
+
+<button
+  ${currentRequestPage === 1 ? "disabled" : ""}
+  id="prevRequestPage"
+>
+
+  ←
+
+</button>
+
+<span>
+
+  ${currentRequestPage}
+  / ${totalPages}
+
+</span>
+
+<button
+  ${currentRequestPage === totalPages ? "disabled" : ""}
+  id="nextRequestPage"
+>
+
+  →
+
+</button>
+
+`;
+
+newMechanicList.appendChild(
+  pagination
+);
+
+// PREV
+pagination.querySelector(
+  "#prevRequestPage"
+)?.addEventListener(
+  "click",
+  () => {
+
+    currentRequestPage--;
+
+    renderRequestedMechanics(
+      fullList
+    );
+
+  }
+);
+
+// NEXT
+pagination.querySelector(
+  "#nextRequestPage"
+)?.addEventListener(
+  "click",
+  () => {
+
+    currentRequestPage++;
+
+    renderRequestedMechanics(
+      fullList
+    );
+
+  }
+);
+
 }
 
 window.deleteMechanic = async function (mechanicId) {
@@ -259,17 +783,91 @@ window.deleteMechanic = async function (mechanicId) {
     showToast("Delete failed", "error");
   }
 };
-// seat search logic outside of loadMechanics to avoid re-attaching event listener on every load
-const searchInput = document.getElementById("searchInput");
 
-searchInput.oninput = (e) => {
-  const value = e.target.value.toLowerCase();
+//approve mechanics
 
-  const filtered = allMechanics.filter(m =>
-    (m.name || "").toLowerCase().includes(value) ||
-    (m.email || "").toLowerCase().includes(value)
-  );
+window.approveMechanic = async function(mechanicId){
 
-  renderMechanics(filtered, currentUser);
-};
+try{
 
+await updateDoc(
+  doc(db,"users",mechanicId),
+  {
+    mechanicJoinStatus:"approved"
+  }
+);
+
+showToast(
+  "Mechanic approved",
+  "success"
+);
+
+await loadMechanics(currentUser);
+
+}catch(error){
+
+console.error(error);
+
+showToast(
+  "Approval failed",
+  "error"
+);
+
+}
+
+}
+
+// 🔹 ATTACH ADD BUTTON
+
+document
+.getElementById("addMechanicBtn")
+?.addEventListener(
+  "click",
+  addMechanic
+);
+
+// ========================================
+// SIDEBAR TOGGLE
+// ========================================
+
+const menuToggle =
+document.getElementById(
+  "menuToggle"
+);
+
+const sidebar =
+document.getElementById(
+  "serviceSidebar"
+);
+
+const serviceMain =
+document.querySelector(
+  ".service-main"
+);
+
+// default state
+let sidebarOpen = true;
+
+menuToggle?.addEventListener(
+  "click",
+  () => {
+
+    sidebarOpen = !sidebarOpen;
+
+    // sidebar
+    sidebar.classList.toggle(
+      "closed"
+    );
+
+    // content expand
+    serviceMain.classList.toggle(
+      "expanded"
+    );
+
+    // move button
+    menuToggle.classList.toggle(
+      "collapsed"
+    );
+
+  }
+);

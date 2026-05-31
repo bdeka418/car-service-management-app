@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mechanic Dashboard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="mechanic.css">
+</head>
+
+<body>
+
+<div class="mechanic-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="mechanic-sidebar" id="mechanicSidebar">
+
+    <div class="sidebar-top">
+
+      <div class="sidebar-logo">
+
+        <div class="logo-icon">
+          🔧
+        </div>
+
+        <div>
+          <h2>AutoCare</h2>
+          <p>Mechanic Panel</p>
+        </div>
+
+      </div>
+
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <a
+        href="mechanic-dashboard.html"
+       
+      >
+
+        <i class="fa-solid fa-house"></i>
+        Dashboard
+
+      </a>
+
+      <a href="active-service.html"
+        class="active">
+        <i class="fa-solid fa-screwdriver-wrench"></i>
+        Active Jobs
+
+      </a>
+
+      <a href="#">
+
+        <i class="fa-solid fa-clock-rotate-left"></i>
+        Upcoming Jobs
+
+      </a>
+
+      <a href="mechanic-history.html">
+
+        <i class="fa-solid fa-file-lines"></i>
+        Job History
+
+      </a>
+
+      <a href="#">
+
+        <i class="fa-solid fa-star"></i>
+        Ratings
+
+      </a>
+
+      <a href="#">
+
+        <i class="fa-solid fa-bell"></i>
+        Notifications
+
+      </a>
+
+      <a href="#">
+
+        <i class="fa-solid fa-gear"></i>
+        Settings
+
+      </a>
+
+    </nav>
+
+    <button
+      id="logoutBtn"
+      class="logout-btn"
+    >
+
+      Logout
+
+    </button>
+  </aside>
+  
+  <button id="menuToggle" class="menu-toggle">
+      <i class="fa-solid fa-bars"></i>
+  </button>
+
+  <!-- MAIN -->
+ <main class="mechanic-main">
+
+  <header class="mechanic-header">
+    <div class="header-left">
+      <h1>Active Service</h1>
+      <p>You can upload photos and videos as you work.</p>
+    </div>
+
+  </header>
+
+  <section id="serviceSummaryCard"></section>
+
+  <section class="live-tracking-card">
+  </section>
+
+  <section class="active-service-layout">
+
+    <div class="service-stages-panel">
+      <h3>Service Stages</h3>
+      <div id="serviceStagesList"></div>
+    </div>
+
+   <div class="service-work-panel">
+
+  <div id="cancelButtonContainer"></div>
+
+  <div id="currentStageCard"></div>
+
+  <div
+  id="inspectionContainer"
+  class="inspection-container">
+</div>
+<div id="mediaUploadContainer"></div>
+<div id="testDriveContainer" style="display:none;"></div>
+  <div id="uploadSectionContainer"></div>
+
+  <div id="notesSectionContainer"></div>
+
+  <div id="completeButtonContainer"></div>
+
+</div>
+    
+    </div>
+
+  </section>
+
+</main>
+
+</div>
+
+<script type="module" src="active-service.js"></script>
+
+</body>
+</html>

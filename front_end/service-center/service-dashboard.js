@@ -1,5 +1,6 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+
+import { auth , db } from "../firebase.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 import {
   getFirestore,
   collection,
@@ -10,7 +11,7 @@ import {
   serverTimestamp,
   getDoc,
   onSnapshot, 
-  deleteDoc
+  deleteDoc, arrayUnion, arrayRemove
 
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
@@ -24,16 +25,21 @@ const firebaseConfig = {
 };
 
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+
+
 //welcome note
 const welcomeText = document.getElementById("welcomeText");
 
 const serviceList = document.getElementById("serviceList");
 
+const upcomingBookingsList =
+document.getElementById(
+  "upcomingBookingsList"
+);
+
 let clickListenerAttached = false;
 
+const carDataCache = {};
 
 //can only access by the service-center
 let currentUser = null;
@@ -42,7 +48,10 @@ let activeServicesUnsubscribe = null;
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    window.location.href = "./index.html";
+
+    if (!window.location.href.includes("index.html")) {
+      window.location.href = "../index.html";
+    }
     return;
   }
   currentUser = user;
@@ -56,17 +65,19 @@ onAuthStateChanged(auth, async (user) => {
   if (userSnap.data().role !== "service_center") {
    showToast("Access denied", "error");
     await signOut(auth);
-    window.location.href = "./index.html";
+    window.location.href = "../index.html";
     return;
   }
 
   listenToActiveServices();
-
+  listenToDashboardStats();
+  
+  
 
 });
 
+
 //car cache loader 
-const carDataCache = {};
 
 async function getCarText(carId) {
 
@@ -84,18 +95,121 @@ async function getCarText(carId) {
   return carText;
 }
 
+// =======================================
+// DASHBOARD STATS
+// =======================================
+
+function listenToDashboardStats() {
+
+  const servicesRef = query(
+  collection(db, "services"),
+  where(
+    "assignedServiceCenterId",
+    "==",
+    currentUser.uid
+  ),
+    where("serviceStatus", "in", [       // ✅ match your Firestore rules exactly
+      "assigned",
+      "job_assigned",
+      "in_service",
+      "pending_approval",
+      "work_done",
+      "completed",
+      "cancelled"
+    ])
+);
+  onSnapshot(
+    servicesRef,
+    (snapshot) => {
+
+      let totalServices = 0;
+
+      let activeServices = 0;
+
+      let completedServices = 0;
+
+      let totalRevenue = 0;
+
+      snapshot.docs.forEach((docSnap) => {
+
+        const data = docSnap.data();
+
+        totalServices++;
+
+        // ACTIVE
+        if (
+          [
+            "assigned",
+            "job_assigned",
+            "in_service",
+            "pending_approval",
+            "work_done"
+          ].includes(data.serviceStatus)
+        ) {
+
+          activeServices++;
+
+        }
+
+        // COMPLETED
+        if (
+          data.serviceStatus ===
+          "completed"
+        ) {
+
+          completedServices++;
+
+        }
+
+        // REVENUE
+        totalRevenue +=
+          Number(data.totalAmount || 0);
+
+      });
+
+      // =========================
+      // UPDATE UI
+      // =========================
+
+      document.getElementById(
+        "totalServicesCount"
+      ).innerText =
+      totalServices;
+
+      document.getElementById(
+        "activeServicesCount"
+      ).innerText =
+      activeServices;
+
+      document.getElementById(
+        "completedServicesCount"
+      ).innerText =
+      completedServices;
+
+      document.getElementById(
+        "totalRevenue"
+      ).innerText =
+      `₹${totalRevenue}`;
+
+    }
+  );
+
+}
 
 //=======================================
 //fetching the car service details
 //=======================================
 
 function listenToActiveServices() {
-  if (activeServicesUnsubscribe) {
-    activeServicesUnsubscribe();
-  }
-let unassignedDocs = [];
-let assignedDocs = [];
+  if (activeServicesUnsubscribe) activeServicesUnsubscribe();
 
+  let unassignedDocs = [];
+  let assignedDocs = [];
+  let renderTimeout = null;
+
+  // ✅ Track which snapshots have fired at least once
+  let unassignedReady = false;
+  let assignedReady = false;
 
   const unassignedQuery = query(
     collection(db, "services"),
@@ -105,70 +219,75 @@ let assignedDocs = [];
 
   const assignedQuery = query(
     collection(db, "services"),
-   where(
-  "serviceStatus",
-  "in",
-  [
-    "pending_assignment",
-    "assigned",
-    "job_assigned",
-    "in_service",
-    "pending_approval",
-    "work_done"
-  ]
-),
+    where("serviceStatus", "in", [
+      "assigned", "job_assigned", "in_service",
+      "pending_approval", "work_done"
+    ]),
     where("assignedServiceCenterId", "==", currentUser.uid)
   );
 
+  async function renderBoard() {
+    // ✅ Wait until BOTH snapshots have fired at least once
+    if (!unassignedReady || !assignedReady) return;
 
+    serviceList.innerHTML = "";
+    upcomingBookingsList.innerHTML = "";
 
+    const uniqueDocsMap = new Map();
 
-///////////////////////
-async function renderBoard() {
+    // unassigned first so assigned can override if same ID
+    [...unassignedDocs, ...assignedDocs].forEach(docSnap => {
+      uniqueDocsMap.set(docSnap.id, docSnap);
+    });
 
-  serviceList.innerHTML = "";
+    const uniqueDocs = Array.from(uniqueDocsMap.values());
 
-  const docs = [];
+    // Empty upcoming bookings state
+    const pendingBookings = uniqueDocs.filter(
+      d => d.data().serviceStatus === "pending_assignment"
+    );
 
-  // Priority: assigned first
-  docs.push(...assignedDocs);
-  docs.push(...unassignedDocs);
+    if (pendingBookings.length === 0) {
+      upcomingBookingsList.innerHTML = `
+        <div class="empty-bookings">
+          <div class="empty-icon">📅</div>
+          <h3>No Upcoming Bookings</h3>
+          <p>New service requests will appear here.</p>
+        </div>
+      `;
+    }
 
-  if (docs.length === 0) {
-  serviceList.innerHTML = `
-    <li>
-      <div class="empty-state">
-        🚗 No active services available
-      </div>
-    </li>
-  `;
-  return;
-}
+    // Empty active services state
+    const activeServices = uniqueDocs.filter(
+      d => d.data().serviceStatus !== "pending_assignment"
+    );
 
-  await Promise.all(docs.map(d => renderServiceDoc(d)));
+    if (activeServices.length === 0) {
+      serviceList.innerHTML = `
+        <li><div class="empty-state">🚗 No active services available</div></li>
+      `;
+    }
 
-}
+    // ✅ Render ALL docs (both pending and active)
+    await Promise.all(uniqueDocs.map(d => renderServiceDoc(d)));
+  }
 
   const unsub1 = onSnapshot(unassignedQuery, (snapshot) => {
+    unassignedDocs = snapshot.docs;
+    unassignedReady = true;        // ✅ mark ready
+    clearTimeout(renderTimeout);
+    renderTimeout = setTimeout(renderBoard, 50);
+  });
 
-  unassignedDocs = snapshot.docs;
-  renderBoard();
+  const unsub2 = onSnapshot(assignedQuery, (snapshot) => {
+    assignedDocs = snapshot.docs;
+    assignedReady = true;          // ✅ mark ready
+    clearTimeout(renderTimeout);
+    renderTimeout = setTimeout(renderBoard, 50);
+  });
 
-});
-
-const unsub2 = onSnapshot(assignedQuery, (snapshot) => {
-
-  assignedDocs = snapshot.docs;
-  renderBoard();
-
-});
-
-  activeServicesUnsubscribe = () => {
-    unsub1();
-    unsub2();
-  };
+  activeServicesUnsubscribe = () => { unsub1(); unsub2(); };
 }
-
 
  async function renderServiceDoc(d) {
   const data = d.data();
@@ -236,85 +355,117 @@ const showAdvancedUI =
   data.serviceStatus === "pending_approval" ||
   data.serviceStatus === "work_done";
 
-if (showAdvancedUI) {
+const carSnap = await getDoc(
+  doc(db, "cars", data.carId)
+);
 
-  li.innerHTML = `
-    <div class="service-card">
+const carData =
+carSnap.exists()
+? carSnap.data()
+: {};
 
-      <div class="card-header">
-        <span class="car-title">${carText}</span>
+const imageUrl =
+carData.imageUrl ||
+"./broken-car.png";
 
-        <span class="see-details" data-id="${serviceId}" data-action="view">
-          see details ➤➤
-        </span>
-      </div>
+const carName =
+`${carData.brand || ""} ${carData.model || ""}`;
 
-      <div class="status-wrapper">
-        <div class="status-bar">
-          <span class="status-text" id="status-${serviceId}">
-            ${data.serviceStatus}
-          </span>
-        </div>
+const serviceDate =
+data.scheduledDate || "No Date";
+
+const serviceTime =
+data.scheduledTime || "No Time";
+
+const note =
+data.notes || "Regular Service";
+
+li.className = "service-booking-item";
+
+li.innerHTML = `
+
+  <div class="booking-card">
+
+    <!-- LEFT -->
+
+    <div class="booking-left">
+
+      <img
+        src="${imageUrl}"
+        alt="vehicle"
+      >
+
+      <div class="booking-info">
+
+        <h4>
+          ${carData.carNumber || data.carId}
+        </h4>
+
+        <p class="car-name">
+          ${carName}
+        </p>
+
+        <p class="booking-time">
+          📅 ${serviceDate}
+          •
+          🕒 ${serviceTime}
+        </p>
+
+        <p class="booking-note">
+          🔧 ${note}
+        </p>
+
       </div>
 
     </div>
-  `;
 
-} else {
+    <!-- RIGHT -->
 
-  // OLD STYLE UI
-  li.innerHTML = `
-  <div class="service-tile-old">
+    <div class="booking-right">
 
-    <div class="tile-left">
-      <div class="service-header">
-        <strong>${carText}</strong>
+      <span class="booking-status">
+
+        ${data.serviceStatus
+          .replaceAll("_"," ")}
+
+      </span>
+
+      <div class="booking-actions">
+
+        ${buttonHTML}
+
       </div>
 
-      <div class="service-notes">
-        📝 Notes: ${data.notes || "—"}
-      </div>
-
-      <div class="service-status">
-        Status: ${data.serviceStatus}
-      </div>
-    </div>
-
-    <div class="tile-right">
-      ${buttonHTML}
     </div>
 
   </div>
+
 `;
+
+  
+
+// ====================================
+// UPCOMING BOOKINGS
+// ====================================
+
+if(
+
+  data.serviceStatus ===
+  "pending_assignment"
+
+){
+
+  upcomingBookingsList.appendChild(li);
 
 }
 
-  const existing = document.getElementById(`service-${serviceId}`);
+// ====================================
+// ACTIVE SERVICES
+// ====================================
 
-if (existing) {
-  existing.replaceWith(li);
-} else {
+else{
 
-  // PRIORITY 1: Assigned services (top)
-  if (data.assignedServiceCenterId === currentUser.uid) {
-
-    serviceList.prepend(li);
-
-  } 
-  // PRIORITY 2: Unassigned services (below assigned)
-  else {
-
-    const firstUnassigned = Array.from(serviceList.children).find(el =>
-      !el.innerHTML.includes("Assign Me")
-    );
-
-    if (firstUnassigned) {
-      firstUnassigned.before(li);
-    } else {
-      serviceList.appendChild(li);
-    }
-
-  }
+  serviceList.appendChild(li);
 
 }
 
@@ -364,7 +515,7 @@ statusEl.dataset.timerAttached = "true";
 if (!clickListenerAttached) {
   clickListenerAttached = true;
 
-  serviceList.addEventListener("click", async (e) => {
+  document.addEventListener("click", async (e) => {
   
     const element = e.target.closest("[data-action]");
 
@@ -378,16 +529,124 @@ const action = element.dataset.action;
 
     console.log("CLICK HANDLER EXECUTED");
 
-    if (action === "assign") {
+    if (
+  action ===
+  "service_center_assigned"
+) {
       console.log("ASSIGN CLICKED BY:", currentUser.uid);
 
-      await updateDoc(doc(db, "services", serviceId), {
-        serviceStatus: "assigned",
-        assignedServiceCenterId: currentUser.uid,
-        assignedAt: serverTimestamp(),
-        hasMedia: false,
-      });
-      return;
+    // ===============================
+// SERVICE CENTER SNAPSHOT
+// ===============================
+
+const serviceCenterSnap =
+await getDoc(
+  doc(
+    db,
+    "users",
+    currentUser.uid
+  )
+);
+
+const serviceCenterData =
+serviceCenterSnap.data();
+
+
+
+// ===============================
+// UPDATE SERVICE
+// ===============================
+
+await updateDoc(
+  doc(db, "services", serviceId),
+  {
+
+    // =========================
+    // STATUS
+    // =========================
+
+    serviceStatus: "assigned",
+
+    assignedServiceCenterId:
+    currentUser.uid,
+
+    assignedAt:
+    serverTimestamp(),
+
+    hasMedia: false,
+
+    // =========================
+    // SERVICE CENTER SNAPSHOT
+    // =========================
+
+    serviceCenterSnapshot: {
+
+      id:
+      currentUser.uid,
+
+      serviceCenterName:
+       serviceCenterData.serviceCenterName || "",
+
+      name:
+      serviceCenterData.name || "",
+
+      email:
+      serviceCenterData.email || "",
+
+      phone:
+      serviceCenterData.phone || "",
+
+      address:
+      serviceCenterData.address || "",
+
+      city:
+      serviceCenterData.city || "",
+
+      state:
+      serviceCenterData.state || "",
+
+      profileImage:
+      serviceCenterData.profileImage || ""
+
+    },
+
+    // =========================
+    // HISTORY EVENT
+    // =========================
+
+    history: arrayUnion({
+
+      action:
+      "service_center_assigned",
+
+      at:
+      new Date(),
+
+      by:
+      currentUser.uid,
+
+      role:
+      "service_center",
+
+      note:
+      `${serviceCenterData.name} accepted the service request`,
+
+      meta: {
+
+        serviceCenterName:
+        serviceCenterData.name || "",
+
+        serviceCenterPhone:
+        serviceCenterData.phone || ""
+
+      }
+
+    })
+
+  }
+);
+
+return;
     }
 
 
@@ -433,14 +692,64 @@ if (action === "view") {
     
 
 
-//logout
 
-const logoutBtn = document.getElementById("logoutBtn");
 
-logoutBtn.addEventListener("click", async () => {
-  await signOut(auth);
-  showToast("Logged out successfully", "success");
-  window.location.href = "index.html";
+// ===============================
+// LOGOUT
+// ===============================
+
+const logoutBtn =
+document.getElementById(
+  "logoutBtn"
+);
+
+logoutBtn.addEventListener(
+  "click",
+  async () => {
+
+    try{
+
+      // disable multiple clicks
+      logoutBtn.disabled = true;
+
+      logoutBtn.innerText =
+      "Logging out...";
+
+      // signout
+      await signOut(auth);
+
+      // toast
+      showToast(
+        "Logged out successfully",
+        "success"
+      );
+
+      // small delay for UX
+      setTimeout(() => {
+
+        window.location.href =
+        "../index.html";
+
+      },1200);
+
+    }
+
+    catch(error){
+
+      console.error(error);
+
+      showToast(
+        "Logout failed",
+        "error"
+      );
+
+      logoutBtn.disabled = false;
+
+      logoutBtn.innerText =
+      "Logout";
+
+    }
+
 });
 
 //toast function
@@ -464,3 +773,43 @@ function showToast(message, type = "success") {
     toast.remove();
   }, 3000);
 }
+
+// =======================================
+// SIDEBAR TOGGLE
+// =======================================
+
+const serviceLayout =
+document.querySelector(
+  ".service-layout"
+);
+
+const menuToggle =
+document.getElementById(
+  "menuToggle"
+);
+
+menuToggle.addEventListener(
+  "click",
+  () => {
+
+    // desktop
+    if(window.innerWidth > 768){
+
+      serviceLayout.classList.toggle(
+        "sidebar-collapsed"
+      );
+
+    }
+
+    // mobile
+    else{
+
+      serviceLayout.classList.toggle(
+        "mobile-sidebar-open"
+      );
+
+    }
+
+  }
+);
+

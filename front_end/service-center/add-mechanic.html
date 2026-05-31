@@ -2,43 +2,234 @@
 <html>
 <head>
   <title>Mechanics</title>
-   <link rel="stylesheet" href="style.css">
+   <link rel="stylesheet" href="./service.css">
 </head>
 
 <body>
 
-<div class="topbar">
-  <div class="logo">AutoService</div>
-  <div class="nav-links">
-    <a href="service-dashboard.html">Dashboard</a>
-    <a href="add-mechanic.html" class="active">Mechanics</a>
-    <a href="manage-services.html">Manage Services</a>
-    <a href="service-history.html">History</a>
-  </div>
-  <div class="logout">Logout</div>
-</div>
+<div class="service-layout">
 
-<!-- ADD MECHANIC CARD -->
-<div class="card add-mechanic-card">
-  <h3>Add Mechanic</h3>
+  <!-- SIDEBAR -->
 
-  <div class="form-row">
-    <input type="text" id="mechName" placeholder="Mechanic Name">
-    <input type="email" id="mechEmail" placeholder="Mechanic Email">
-    <button id="addMechanicBtn" onclick="addMechanic()">+ Add Mechanic</button>
-  </div>
-</div>
+  <aside
+    class="service-sidebar"
+    id="serviceSidebar"
+  >
 
-<!-- TEAM SECTION -->
-<div class="card team-section">
-  <div class="team-header">
-    <h3>Current Mechanics</h3>
-    <input type="text" id="searchInput" placeholder="Search mechanic...">
-  </div>
+    <div class="sidebar-logo">
 
-  <div id="mechanicList" class="mechanic-list">
-    <!-- JS WILL RENDER CARDS HERE -->
-  </div>
+      <div class="logo-icon">
+        🚘
+      </div>
+
+      <div>
+
+        <h2>
+          AutoCare
+        </h2>
+
+        <span>
+          Service Center
+        </span>
+
+      </div>
+
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <a href="service-dashboard.html">
+        Dashboard
+      </a>
+
+      <a href="manage-services.html">
+        Services
+      </a>
+
+      <a
+        href="add-mechanic.html"
+        class="active"
+      >
+        Mechanics
+      </a>
+
+      <a href="service-history.html">
+        History
+      </a>
+
+    </nav>
+
+    <div class="sidebar-bottom">
+
+      <button id="logoutBtn">
+        Logout
+      </button>
+
+    </div>
+
+  </aside>
+
+  <!-- MAIN -->
+
+  <main class="service-main">
+
+    <!-- TOPBAR -->
+
+    <header class="service-topbar">
+
+      <div class="topbar-left">
+
+        <button
+          class="menu-toggle"
+          id="menuToggle"
+        >
+          ☰
+        </button>
+
+        <div>
+
+          <h1>
+            Mechanic
+          </h1>
+
+          <p>
+            Add a new mechanic to your service center.
+          </p>
+
+        </div>
+
+      </div>
+
+    </header>
+
+    <!-- ADD CARD -->
+
+    <section
+      class="service-card add-mechanic-section"
+    >
+
+      <div class="card-header-column">
+
+        <h3>
+          Appoint New Mechanic
+        </h3>
+
+        <p>
+          Enter the name and email
+          of the mechanic you want to add.
+        </p>
+
+      </div>
+
+      <div class="mechanic-form-grid">
+
+        <div class="input-group">
+
+          <label>
+            Full Name
+          </label>
+
+          <input
+            type="text"
+            id="mechName"
+            placeholder="Enter full name"
+          >
+
+        </div>
+
+        <div class="input-group">
+
+          <label>
+            Email Address
+          </label>
+
+          <input
+            type="email"
+            id="mechEmail"
+            placeholder="Enter email address"
+          >
+
+        </div>
+
+        <button
+          id="addMechanicBtn"
+          class="add-mechanic-btn"
+        >
+
+          + Add Mechanic
+
+        </button>
+
+      </div>
+
+    </section>
+
+    <!-- GRID -->
+
+    <section class="mechanic-grid">
+
+      <!-- LEFT -->
+
+      <div class="service-card">
+
+        <div class="card-header">
+
+          <div>
+
+            <h3>
+              All Mechanics
+            </h3>
+
+            <p>
+              Manage all mechanics
+            </p>
+
+          </div>
+
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Search mechanic..."
+            class="mechanic-search"
+          >
+
+        </div>
+
+        <div
+          id="mechanicList"
+          class="modern-mechanic-list"
+        ></div>
+
+      </div>
+
+      <!-- RIGHT -->
+
+      <div class="service-card">
+
+        <div class="card-header-column">
+
+          <h3>
+            Newly Appointed Mechanics
+          </h3>
+
+          <p>
+            Recently added mechanics
+            will appear here.
+          </p>
+
+        </div>
+
+        <div
+          id="newMechanicList"
+          class="new-mechanic-list"
+        ></div>
+
+      </div>
+
+    </section>
+
+  </main>
+
 </div>
 
 <script type="module" src="add-mechanic.js"></script>

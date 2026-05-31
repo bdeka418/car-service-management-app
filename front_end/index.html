@@ -3,76 +3,239 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Auth - Car Service</title>
+<title>Auth - AutoCare Service Center</title>
 <link rel="stylesheet" href="auth.css">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
-
 <body>
 
-<div class="auth-container">
+<div class="auth-wrapper">
 
-  <div class="auth-card">
-
-    <!-- LOGIN -->
-    <div id="loginSection" class="active">
-      <h2>Welcome Back!</h2>
-      <p class="sub">Login to continue</p>
-
-      <input type="email" id="loginEmail" placeholder="Email">
-      <div class="password-field">
-  <input type="password" id="loginPassword" placeholder="Password">
-  <span class="toggle-password" data-target="loginPassword">👁️</span>
-</div>
-    
-
-      <button id="loginBtn">Login</button>
-
-      <div class="auth-links">
-        <span id="showRegister">Register now</span>
-        <span id="showForgot">Forgot password?</span>
+  <!-- ===== LEFT PANEL ===== -->
+  <div class="auth-left">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 4L36 12V28L20 36L4 28V12L20 4Z" fill="#2563eb" opacity="0.9"/>
+          <path d="M14 20C14 16.686 16.686 14 20 14C23.314 14 26 16.686 26 20C26 23.314 23.314 26 20 26C16.686 26 14 23.314 14 20Z" fill="white" opacity="0.9"/>
+          <rect x="18" y="10" width="4" height="4" rx="1" fill="white"/>
+          <rect x="18" y="26" width="4" height="4" rx="1" fill="white"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">Auto<span class="accent">Care</span></span>
+        <span class="brand-sub">Service Center</span>
       </div>
     </div>
 
-    <!-- REGISTER -->
-    <div id="registerSection" class="hidden">
-      <h2>Create Account</h2>
-
-      <input type="text" id="name" placeholder="Full Name">
-      <input type="email" id="email" placeholder="Email">
-     <div class="password-field">
-  <input type="password" id="password" placeholder="Password">
-  <span class="toggle-password" data-target="password">👁️</span>
-</div>
-
-<div class="password-field">
-  <input type="password" id="confirmPassword" placeholder="Confirm Password">
-  <span class="toggle-password" data-target="confirmPassword">👁️</span>
-</div>
-      <button id="signupBtn">Sign Up</button>
-
-      <div class="auth-links center">
-        <span id="showLogin">Back to Login</span>
-      </div>
+    <div class="hero-content">
+      <h1>Smart Service.<br><span class="accent">Smarter Management.</span></h1>
+      <p>Streamline your service operations, manage jobs, mechanics and customers – all in one place.</p>
     </div>
 
-    <!-- FORGOT PASSWORD -->
-    <div id="forgotSection" class="hidden">
-      <h2>Reset Password</h2>
-
-      <input type="email" id="resetEmail" placeholder="Enter your email">
-
-      <button id="resetBtn">Send Reset Link</button>
-
-      <div class="auth-links center">
-        <span id="backToLogin">Back to Login</span>
-      </div>
+    <div class="car-image-wrap">
+      <img src="./loginCar.png" alt="Car" class="car-img" onerror="this.style.display='none'">
+      <div class="car-glow"></div>
     </div>
 
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="4" rx="1"/><path d="M5 7h14l1 10H4L5 7z"/><path d="M9 11v4M12 11v4M15 11v4"/></svg>
+        </div>
+        <div>
+          <strong>End-to-End Workflow</strong>
+          <span>Track every step from request to completion.</span>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div>
+          <strong>Team Collaboration</strong>
+          <span>Assign jobs, manage mechanics and more.</span>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div>
+          <strong>Real-time Updates</strong>
+          <span>Stay informed, with live status and notifications.</span>
+        </div>
+      </div>
+    </div>
   </div>
 
+  <!-- ===== RIGHT PANEL ===== -->
+  <div class="auth-right">
+
+    <div class="lang-select">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      English
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+
+    <div class="form-panel">
+
+      <!-- LOGIN SECTION -->
+      <div id="loginSection" class="section active">
+        <h2>Welcome Back!</h2>
+        <p class="sub">Sign in to continue to AutoCare Service Center</p>
+
+        <div class="field-group">
+          <label>Email</label>
+          <div class="input-wrap">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <input type="email" id="loginEmail" placeholder="Enter your email address">
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Password</label>
+          <div class="input-wrap">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="loginPassword" placeholder="Enter your password">
+            <span class="toggle-password" data-target="loginPassword">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </span>
+          </div>
+        </div>
+
+        <div class="row-between">
+          <label class="remember-me">
+            <input type="checkbox" id="rememberMe" checked>
+            <span class="checkmark"></span>
+            Remember me
+          </label>
+          <span class="link-text" id="showForgot">Forgot Password?</span>
+        </div>
+
+        <button id="loginBtn" class="btn-primary">Sign In</button>
+
+        <div class="divider"><span>or continue with</span></div>
+
+        <button class="btn-google" id="googleBtn">
+          <svg viewBox="0 0 48 48" width="20" height="20"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.34-8.16 2.34-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+          Continue with Google
+        </button>
+
+        <p class="register-prompt">Don't have an account?</p>
+        <div class="register-cards">
+          <div class="reg-card" id="showRegisterCustomer">
+            <div class="reg-card-icon customer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div class="reg-card-body">
+              <strong>Register as Customer</strong>
+              <span>Book services, track history and more.</span>
+            </div>
+            <span class="reg-card-arrow">Register Now →</span>
+          </div>
+
+          <div class="reg-card" id="showRegisterService">
+            <div class="reg-card-icon service">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <div class="reg-card-body">
+              <strong>Register as Service Center</strong>
+              <span>Manage your team, jobs and workflow.</span>
+            </div>
+            <span class="reg-card-arrow">Register Now →</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- REGISTER SECTION -->
+      <div id="registerSection" class="section hidden">
+        <h2 id="registerTitle">Create Account</h2>
+        <p class="sub" id="registerSubtitle">Join AutoCare today</p>
+
+        <!-- Service Center Name (shown only for service center role) -->
+        <div class="field-group" id="serviceCenterNameGroup" style="display:none;">
+          <label>Service Center Name</label>
+          <div class="input-wrap">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <input type="text" id="serviceCenterName" placeholder="Enter your service center name">
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Full Name</label>
+          <div class="input-wrap">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input type="text" id="name" placeholder="Enter your full name">
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Email</label>
+          <div class="input-wrap">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <input type="email" id="email" placeholder="Enter your email">
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Password</label>
+          <div class="input-wrap">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="password" placeholder="Create a password">
+            <span class="toggle-password" data-target="password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </span>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Confirm Password</label>
+          <div class="input-wrap">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="confirmPassword" placeholder="Confirm your password">
+            <span class="toggle-password" data-target="confirmPassword">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </span>
+          </div>
+        </div>
+
+        <button id="signupBtn" class="btn-primary">Create Account</button>
+
+        <div class="auth-links center">
+          <span class="link-text" id="showLogin">← Back to Login</span>
+        </div>
+      </div>
+
+      <!-- FORGOT PASSWORD SECTION -->
+      <div id="forgotSection" class="section hidden">
+        <h2>Reset Password</h2>
+        <p class="sub">We'll send a reset link to your email</p>
+
+        <div class="field-group">
+          <label>Email Address</label>
+          <div class="input-wrap">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <input type="email" id="resetEmail" placeholder="Enter your registered email">
+          </div>
+        </div>
+
+        <button id="resetBtn" class="btn-primary">Send Reset Link</button>
+
+        <div class="auth-links center">
+          <span class="link-text" id="backToLogin">← Back to Login</span>
+        </div>
+      </div>
+
+    </div><!-- /form-panel -->
+
+    <footer class="auth-footer">© 2026 AutoCare Service Center. All rights reserved.</footer>
+
+  </div><!-- /auth-right -->
+
 </div>
+
 <div id="toast-container"></div>
 <script type="module" src="script.js"></script>
-
 </body>
 </html>

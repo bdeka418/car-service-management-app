@@ -3,41 +3,450 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="./service.css">
    
     <title>service-center dashboard</title>
 </head>
 <body>
-     <div class="top-bar">
-  <div>
-    <h2>Service Center</h2>
-    <p id="welcomeText"></p>
+    <div class="service-layout">
+
+        <button
+      id="menuToggle"
+      class="menu-toggle"
+    >
+      ☰
+    </button>
+
+  <!-- SIDEBAR -->
+
+  <aside
+  class="service-sidebar"
+  id="serviceSidebar"
+>
+
+
+<div class="sidebar-logo">
+
+  <div class="logo-icon">
+    🚘
   </div>
 
-  <button id="logoutBtn">Logout</button>
+  <div>
+
+    <h2>AutoCare</h2>
+
+    <span>
+      Service Center
+    </span>
+
+  </div>
+
 </div>
 
-<!-- navigation bar -->
-  <div class="navbar">
- <a href="service-dashboard.html" class="active">Dashboard</a>
-  <a href="add-mechanic.html" >Mechanics</a>
-    <a href="manage-services.html" >Manage Services</a>
-    <a href="service-history.html" >History</a>
+<nav class="sidebar-nav">
+
+  <a
+    href="./service-dashboard.html"
+    class="active"
+  >
+    Dashboard
+  </a>
+
+  <a href="./manage-services.html">
+    Manage Services
+  </a>
+
+  <a href="./add-mechanic.html">
+    Mechanics
+  </a>
+
+  <a href="./service-history.html">
+    History
+  </a>
+
+</nav>
+
+<div class="sidebar-bottom">
+
+  <button id="logoutBtn">
+    Logout
+  </button>
 
 </div>
 
-  <div class="section-card">
-  <div class="section-header">Active Services</div>
-  <ul id="serviceList"></ul>
+
+  </aside>
+
+  
+
+  <!-- MAIN -->
+
+  <main class="service-main">
+
+
+<!-- TOPBAR -->
+
+<div class="service-topbar">
+
+  <div class="topbar-left">
+
+  
+
+    <div>
+
+      <h1>
+        Welcome back 👋
+      </h1>
+
+      <p id="welcomeText"></p>
+
+    </div>
+
+  </div>
+
+  <div class="topbar-actions">
+
+    <button class="notification-btn">
+      🔔
+    </button>
+
+    <div class="profile-avatar">
+      SC
+    </div>
+
+  </div>
+
 </div>
 
+
+<!-- STATS -->
+
+<section class="service-stats-grid">
+
+  <div class="service-stat-card">
+
+    <h3 id="totalServicesCount">
+      0
+    </h3>
+
+    <p>Total Services</p>
+
+  </div>
+
+  <div class="service-stat-card">
+
+    <h3 id="activeServicesCount">
+      0
+    </h3>
+
+    <p>Active Services</p>
+
+  </div>
+
+  <div class="service-stat-card">
+
+    <h3 id="completedServicesCount">
+      0
+    </h3>
+
+    <p>Completed</p>
+
+  </div>
+
+  <div class="service-stat-card">
+
+    <h3 id="totalRevenue">
+      ₹0
+    </h3>
+
+    <p>Total Revenue</p>
+
+  </div>
+
+</section>
+
+
+<!-- CONTENT GRID -->
+
+<section class="service-content-grid">
+
+  <!-- UPCOMING -->
+
+  <div class="service-card">
+
+    <div class="card-header">
+
+      <h3>Upcoming Bookings</h3>
+
+      <a href="#">
+        View All →
+      </a>
+
+    </div>
+
+    <div
+      id="upcomingBookingsList"
+      class="dashboard-service-list"
+    ></div>
+
+  </div>
+
+
+  <!-- ACTIVE -->
+
+  <div class="service-card">
+
+    <div class="card-header">
+
+      <h3>Active Services</h3>
+
+      <a href="#">
+        View All →
+      </a>
+
+    </div>
+
+    <div
+      id="serviceList"
+      class="dashboard-service-list"
+    ></div>
+
+  </div>
+
+</section>  
+
+
+<!-- ===================================== -->
+<!-- DASHBOARD BOTTOM SECTION -->
+<!-- ===================================== -->
+
+<section class="dashboard-bottom-grid">
+
+  <!-- TOP SERVICES -->
+
+  <div class="analytics-card">
+
+    <div class="section-header">
+
+      <h2>
+        Top Services
+      </h2>
+
+      <button class="month-filter-btn">
+        This Month ▾
+      </button>
+
+    </div>
+
+    <div class="analytics-content">
+
+      <!-- PIE CHART -->
+
+      <div class="pie-chart-wrapper">
+
+        <div class="pie-chart">
+
+          <div class="pie-center"></div>
+
+        </div>
+
+      </div>
+
+      <!-- LEGEND -->
+
+      <div class="service-legend">
+
+        <div class="legend-item">
+
+          <span class="legend-dot blue"></span>
+
+          <div class="legend-details">
+
+            <p>Regular Servicing</p>
+
+            <span>120 (40%)</span>
+
+          </div>
+
+        </div>
+
+        <div class="legend-item">
+
+          <span class="legend-dot yellow"></span>
+
+          <div class="legend-details">
+
+            <p>Wheel Alignment</p>
+
+            <span>46 (15%)</span>
+
+          </div>
+
+        </div>
+
+        <div class="legend-item">
+
+          <span class="legend-dot orange"></span>
+
+          <div class="legend-details">
+
+            <p>AC Service</p>
+
+            <span>32 (10%)</span>
+
+          </div>
+
+        </div>
+
+        <div class="legend-item">
+
+          <span class="legend-dot green"></span>
+
+          <div class="legend-details">
+
+            <p>Detailing</p>
+
+            <span>21 (7%)</span>
+
+          </div>
+
+        </div>
+
+        <div class="legend-item">
+
+          <span class="legend-dot gray"></span>
+
+          <div class="legend-details">
+
+            <p>Others</p>
+
+            <span>30 (10%)</span>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- REVIEWS -->
+
+  <div class="analytics-card reviews-card">
+
+    <div class="section-header">
+
+      <h2>
+        Recent Reviews
+      </h2>
+
+      <a href="#" class="view-all-link">
+        View All →
+      </a>
+
+    </div>
+
+    <div class="reviews-list">
+
+      <div class="review-item">
+
+        <div class="review-avatar">
+          BD
+        </div>
+
+        <div class="review-content">
+
+          <div class="review-top">
+
+            <h4>
+              Bikash Deka
+            </h4>
+
+            <span class="review-rating">
+              ⭐ 4.8
+            </span>
+
+          </div>
+
+          <p>
+            Great service and very professional staff.
+          </p>
+
+          <span class="review-time">
+            2 days ago
+          </span>
+
+        </div>
+
+      </div>
+
+      <div class="review-item">
+
+        <div class="review-avatar second-avatar">
+          RS
+        </div>
+
+        <div class="review-content">
+
+          <div class="review-top">
+
+            <h4>
+              Rahul Sahu
+            </h4>
+
+            <span class="review-rating">
+              ⭐ 4.6
+            </span>
+
+          </div>
+
+          <p>
+            Timely service and good experience.
+          </p>
+
+          <span class="review-time">
+            5 days ago
+          </span>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+
+  </main>
+
+</div>
+
+<!-- IMAGE MODAL -->
 
 <div id="imageModal" class="image-modal">
-  <span class="image-close">&times;</span>
-  <img class="image-modal-content" id="modalImage">
+
+  <span class="image-close">
+    &times;
+  </span>
+
+<img
+class="image-modal-content"
+id="modalImage"
+
+>
+
 </div>
 
-<div id="toastContainer" class="toast-container"></div>
+<div
+  id="toastContainer"
+  class="toast-container"
+></div>
+
 
 
   <script type="module" src="service-dashboard.js"></script>
