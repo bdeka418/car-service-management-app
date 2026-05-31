@@ -1,61 +1,299 @@
-# Car Service Management Web App
+# AutoCare - Smart Car Service Management System
 
-A real-time car service workflow system built using Firebase and Vanilla JavaScript.
+A real-time Car Service Management Web Application built using Firebase and Vanilla JavaScript. The system enables customers, service centers, and mechanics to manage the complete vehicle servicing lifecycle through a structured workflow with live tracking, inspection reporting, media uploads, and real-time progress updates.
 
 ---
 
-## Overview
+## Project Overview
 
-This project allows service centers to manage car servicing using a structured, media-based workflow. The system automatically tracks progress based on uploaded images.
+AutoCare is designed to digitize and automate the traditional car servicing process. Customers can register vehicles and request services, service centers can assign mechanics, and mechanics can perform servicing through a guided workflow while uploading service evidence and updating progress in real time.
+
+The platform uses Firebase Authentication, Firestore Database, Firebase Storage, and Cloud Functions to provide a secure and scalable solution.
 
 ---
 
 ## Key Features
 
-* Firebase Authentication with role-based access (customer, service_center)
-* Add and manage cars
-* Create and manage service requests
-* Upload images for each service stage:
+### Authentication & User Management
 
-  * before
-  * during
-  * after
-* Maximum 3 images per stage
-* Real-time updates using Firestore
-* Activity logs generated from timestamps
+* Firebase Authentication
+* Role-Based Access Control (RBAC)
+* Customer Accounts
+* Service Center Accounts
+* Mechanic Accounts
+* Unique Email Validation System
+
+### Vehicle Management
+
+* Register New Vehicles
+* Upload Vehicle Images
+* Manage Vehicle Information
+* View Registered Vehicles
+
+### Service Request Management
+
+* Create Service Requests
+* Select Service Type
+* Schedule Service Date & Time
+* Cancel Service Requests
+* Service History Tracking
+
+### Service Center Workflow
+
+* View Incoming Service Requests
+* Assign Services to Mechanics
+* Monitor Service Progress
+* Review Active Jobs
+* Complete Service Approval Process
+
+### Mechanic Workflow
+
+* Accept Assigned Jobs
+* Start Work
+* Active Service Dashboard
+* Real-Time Service Progress Updates
+* Guided Stage-Based Workflow
+
+### Service Stages
+
+1. Vehicle Received
+2. Service Started
+3. Mechanic Inspection
+4. Uploading Media
+5. Test Drive
+6. Service Complete
+
+### Inspection Module
+
+Mechanics can create inspection reports including:
+
+* Issues Found
+* Severity Level
+* Inspection Notes
+* Inspection Timestamp
+* Mechanic Information
+
+### Live Tracking System
+
+* Live Tracking Toggle
+* Service Progress Monitoring
+* Real-Time Updates
+* Work Duration Tracking
+* Activity Timeline Logging
+
+### Media Management
+
+Upload service media categorized into:
+
+#### Before Service
+
+* Maximum 3 Images
+
+#### During Service
+
+* Maximum 3 Images
+
+#### After Service
+
+* Maximum 3 Images
+
+Additional Features:
+
+* Media Preview
+* Media Deletion
+* Upload Validation
+* Automatic Workflow Validation
+* Firebase Storage Integration
+
+### Activity History
+
+Every important action is logged automatically:
+
+* Service Requested
+* Service Assigned
+* Mechanic Assigned
+* Job Accepted
+* Work Started
+* Stage Advanced
+* Inspection Completed
+* Media Uploaded
+* Service Completed
 
 ---
 
 ## Workflow Logic
 
-The workflow is fully automated and based on uploaded media:
+The application follows a structured servicing workflow.
 
-* Users must follow the order:
-  `before → during → after`
-* Cannot skip or go backward manually
-* Uploading next stage updates the service step
-* Deleting images automatically rolls back the step
-* System always stays consistent with data
+### Service Assignment Flow
+
+Customer → Service Request
+
+↓
+
+Service Center Assignment
+
+↓
+
+Mechanic Assignment
+
+↓
+
+Job Acceptance
+
+↓
+
+Start Work
+
+↓
+
+Live Tracking Enabled
+
+↓
+
+Vehicle Received
+
+↓
+
+Service Started
+
+↓
+
+Inspection
+
+↓
+
+Media Upload
+
+↓
+
+Test Drive
+
+↓
+
+Service Complete
 
 ---
 
-## Tech Stack
+## Real-Time Features
 
-* Frontend: HTML, CSS, JavaScript
-* Backend: Firebase Cloud Functions
-* Database: Firestore
-* Storage: Firebase Storage
-* Authentication: Firebase Auth
+* Firestore Real-Time Listeners
+* Automatic Dashboard Updates
+* Live Service Tracking
+* Instant Status Synchronization
+* Real-Time Media Updates
 
 ---
 
-## Architecture
+## Security Features
 
-* Media is the source of truth
-* Service step (`currentStep`) is derived from media
-* Backend controls workflow using Cloud Functions
+### Firestore Security Rules
+
+* Customer Data Isolation
+* Mechanic Access Restrictions
+* Service Center Ownership Validation
+* Service Assignment Validation
+* Secure Media Access
+* Role-Based Permissions
+
+### Data Validation
+
+* Unique Email Lock System
+* Service Ownership Checks
+* Assignment Verification
+* Workflow Validation
+
+---
+
+## Technology Stack
+
+| Layer                   | Technology               |
+| ----------------------- | ------------------------ |
+| Frontend                | HTML, CSS, JavaScript    |
+| Authentication          | Firebase Authentication  |
+| Database                | Cloud Firestore          |
+| Storage                 | Firebase Storage         |
+| Backend Logic           | Firebase Cloud Functions |
+| Hosting                 | Firebase Hosting         |
 
 
+---
 
-Bikash Deka
-MCA, Royal Global University
+## Database Collections
+
+### users
+
+Stores:
+
+* Customer Profiles
+* Service Center Profiles
+* Mechanic Profiles
+
+### cars
+
+Stores:
+
+* Vehicle Information
+* Vehicle Images
+* Ownership Information
+
+### services
+
+Stores:
+
+* Service Requests
+* Service Workflow Data
+* Inspection Reports
+* Live Tracking Data
+* Service History
+
+### jobCards
+
+Stores:
+
+* Assigned Jobs
+* Mechanic Workflow Information
+* Service Progress Tracking
+* Media Summary
+
+### unique_emails
+
+Stores:
+
+* Email Lock Records
+* Duplicate Prevention Data
+
+---
+
+## Current Project Version
+
+**Version:** v0.9.8-active-service-workflow
+
+### Completed Modules
+
+* Authentication System
+* Role-Based Access Control
+* Vehicle Management
+* Service Request System
+* Service Center Dashboard
+* Mechanic Dashboard
+* Job Assignment Workflow
+* Active Service Workflow
+* Inspection Module
+* Live Tracking System
+* Media Upload System
+* Service History Tracking
+* Firestore Security Rules
+* Cloud Function Validation
+
+---
+
+## Developer
+
+**Bikash Deka**
+Master of Computer Applications (MCA)
+
+
+### Project Title
+
+**AutoCare: Smart Car Service Management System**
