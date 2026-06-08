@@ -2,26 +2,189 @@
 <html>
 <head>
   <title>Manage Services</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="./service.css">
 </head>
 
 <body>
 
-<h2>Manage Services</h2>
+<div class="service-layout">
 
-<div class="navbar">
-  <a href="service-dashboard.html">Dashboard</a>
-  <a href="add-mechanic.html">Mechanics</a>
-  <a href="manage-services.html" class="active">Manage Services</a>
-  <a href="service-history.html">History</a>
+        <button
+      id="menuToggle"
+      class="menu-toggle"
+    >
+      ☰
+    </button>
+
+  <!-- SIDEBAR -->
+
+  <aside
+  class="service-sidebar"
+  id="serviceSidebar"
+>
+
+
+<div class="sidebar-logo">
+
+  <div class="logo-icon">
+    🚘
+  </div>
+
+  <div>
+
+    <h2>AutoCare</h2>
+
+    <span>
+      Service Center
+    </span>
+
+  </div>
+
 </div>
 
-<h3>Active Services</h3>
+<nav class="sidebar-nav">
 
-<div id="servicesContainer">
-  Loading services...
+  <a
+    href="./service-dashboard.html"
+  >
+    Dashboard
+  </a>
+
+  <a href="./manage-services.html"
+   class="active"
+  >
+    Manage Services
+  </a>
+
+  <a href="./add-mechanic.html">
+    Mechanics
+  </a>
+
+  <a href="./service-history.html">
+    History
+  </a>
+
+</nav>
+
+<div class="sidebar-bottom">
+
+  <button id="logoutBtn">
+    Logout
+  </button>
+
+</div>
+
+
+  </aside>
+
+  
+
+  <!-- MAIN -->
+
+  <main class="service-main">
+    <div class="service-topbar">
+        <div>
+            <h1>Active Services</h1>
+            <p>Monitor and manage all ongoing services in real-time</p>
+        </div>
+        <div class="topbar-actions">
+            <button class="notification-btn">🔔</button>
+            <div class="profile-avatar">AD</div>
+        </div>
+    </div>
+
+    <div class="manage-stats-row">
+        <div class="stat-card">
+            <div class="stat-icon blue">🛠️</div>
+            <div class="stat-info">
+                <span>Total Active Services</span>
+                <h2 id="totalServicesCount">0</h2>
+            </div>
+            <a href="#" id="viewAllActive">View all</a>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green">🔄</div>
+            <div class="stat-info">
+                <span>In Progress</span>
+                <h2 id="inProgressCount">0</h2>
+            </div>
+            <a href="#" id="viewAllInProgress">View all</a>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon orange">⏳</div>
+            <div class="stat-info">
+                <span>Pending Review</span>
+                <h2 id="pendingReviewCount">0</h2>
+            </div>
+            <a href="#" id="viewAllPending">View all</a>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon red">⚠️</div>
+            <div class="stat-info">
+                <span>Re-Inspection</span>
+                <h2 id="reInspectionCount">0</h2>
+            </div>
+            <a href="#" id="viewAllReInspection">View all</a>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon purple">🚫</div>
+            <div class="stat-info">
+                <span>Cancellation Requested</span>
+                <h2 id="cancelledCount">0</h2>
+            </div>
+            <a href="#" id="viewAllCancelled">View all</a>
+        </div>
+    </div>
+    <div class="list-filters">
+        <div class="filter-search">
+            <input type="text" id="searchInput" placeholder="Search by service ID, customer, vehicle...">
+        </div>
+        
+        <select class="filter-select" id="statusFilter">
+            <option value="All Status">All Status</option>
+            <option value="PENDING APPROVAL">Pending Approval</option>
+            <option value="JOB ASSIGNED">Job Assigned</option>
+            <option value="IN PROGRESS">In Progress</option>
+            <option value="RE-INSPECTION">Re-Inspection</option>
+            <option value="CANCELLATION REQUESTED">Cancellation Requested</option>
+        </select>
+        
+        <select class="filter-select" id="typeFilter">
+            <option value="All Service Types">All Service Types</option>
+            <option value="Regular Servicing">Regular Servicing</option>
+            <option value="Accidental Repair">Accidental Repair</option>
+            <option value="General Service">General Service</option>
+            <option value="Engine Repair">Engine Repair</option>
+            <option value="Brake Service">Brake Service</option>
+            <option value="AC Service">AC Service</option>
+            <option value="Wheel Alignment">Wheel Alignment</option>
+            <option value="Diagnostics">Diagnostics</option>
+            <option value="Other">Other</option>
+        </select>
+        <button class="filter-btn" id="filterBtn">Filter</button>
+    </div>
+
+    <div class="dashboard-list-container">
+        <div class="list-header">
+            <div>Service ID</div>
+            <div>Vehicle & Type</div>
+            <div>Customer</div>
+            <div>Mechanic</div>
+            <div>Service Center</div>
+            <div>Current Stage</div>
+            <div>Status</div>
+            <div>Started At</div>
+            <div>Duration</div>
+            <div>Actions</div>
+        </div>
+        <div id="servicesContainer" class="list-body">
+            <div style="padding: 20px; text-align: center; color: #64748b;">Loading services...</div>
+        </div>
+    </div>
+</main>
 </div>
 
 <script type="module" src="manage-services.js"></script>
+
 </body>
 </html>

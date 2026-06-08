@@ -6,6 +6,7 @@
   <title>Mechanic Dashboard</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="mechanic.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body>
@@ -106,12 +107,17 @@
  <main class="mechanic-main">
 
   <header class="mechanic-header">
-    <div class="header-left">
+  <div class="header-left">
+    <a href="mechanic-dashboard.html" class="back-btn">
+      <i class="fa-solid fa-arrow-left"></i>
+    </a>
+    <div>
       <h1>Active Service</h1>
-      <p>You can upload photos and videos as you work.</p>
+      <p>You can upload photos and videos as you work. All media is visible to the owner and service center.</p>
     </div>
-
-  </header>
+  </div>
+  <div id="headerCancelBtn"></div>
+</header>
 
   <section id="serviceSummaryCard"></section>
 
@@ -137,6 +143,7 @@
 </div>
 <div id="mediaUploadContainer"></div>
 <div id="testDriveContainer" style="display:none;"></div>
+<div id="reInspectionContainer" style="display:none;"></div>
   <div id="uploadSectionContainer"></div>
 
   <div id="notesSectionContainer"></div>
@@ -153,7 +160,14 @@
 
 </div>
 
-<script type="module" src="active-service.js"></script>
+<div id="mediaModal" class="image-modal">
+      <span class="close-modal">&times;</span>
+      <div class="modal-content-wrapper">
+          <img class="modal-content" id="modalImage" style="display:none;">
+          <video class="modal-content" id="modalVideo" style="display:none;" controls></video>
+      </div>
+  </div>
 
+  <script type="module" src="active-service.js"></script>
 </body>
 </html>

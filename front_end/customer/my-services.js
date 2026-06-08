@@ -2,6 +2,8 @@ import { db, auth } from "../firebase.js";
 import {
   collection,
   addDoc,
+  setDoc,      
+  deleteDoc,   
   query,
   where,
   getDocs,
@@ -10,7 +12,7 @@ import {
   doc,
   getDoc,
   onSnapshot
-}  
+}
 from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 import {
   onAuthStateChanged,
@@ -285,31 +287,32 @@ createServiceBtn.addEventListener("click", async () => {
 
   //check: is this car already in service?
 
-  const activeServiceQuery = query(
-    collection(db, "services"),
-    where("ownerId", "==", currentUser.uid),
-    where(
-  "carSnapshot.carNumber",
-  "==",
-  carSelect.value
-),
-    where("serviceStatus", "in", [
-  "pending_assignment",
-  "assigned",
-  "job_assigned",
-  "in_service",
-  "pending_approval",
-  "work_done"
-])
-  );
+const activeServiceQuery = query(
+  collection(db, "services"),
+  where("ownerId", "==", currentUser.uid),
+  where("carId", "==", carSelect.value),
+  where("serviceStatus", "in", [
+    "pending_assignment",
+    "assigned",
+    "job_assigned",
+    "in_service",
+    "pending_approval",
+    "work_done"
+  ])
+);
 
-  const activeSnap = await getDocs(activeServiceQuery);
+const activeSnap = await getDocs(activeServiceQuery);
 
-  if (!activeSnap.empty) {
-    showToast("This car is already under service. Please wait until it is completed.", "warning");
-     serviceNotes.value = "";
-    return;
-  }
+if (!activeSnap.empty) {
+  await Swal.fire({
+    icon: "warning",
+    title: "Car Already in Service",
+    text: "This vehicle already has an active service request. Please wait until it is completed.",
+    confirmButtonText: "OK"
+  });
+  return;
+}
+  
 
 
   try {
@@ -361,6 +364,25 @@ const currentUserData =
 userDoc.exists()
 ? userDoc.data()
 : {};
+// Before addDoc, write a lock doc
+const lockRef = doc(db, "serviceLocks", `${currentUser.uid}_${carSelect.value}`);
+
+try {
+  await setDoc(lockRef, {
+    ownerId: currentUser.uid,
+    carId: carSelect.value,
+    createdAt: serverTimestamp()
+  }, { merge: false }); // fails if already exists → server blocks duplicate
+} catch (e) {
+  await Swal.fire({
+    icon: "warning",
+    title: "Already in Service",
+    text: "A service for this vehicle already exists."
+  });
+  return;
+}
+
+
 
     await addDoc(
   collection(db, "services"),
@@ -1112,80 +1134,67 @@ window.onclick = (event) => {
 //canel service function
 async function cancelService(serviceId) {
 
-  const confirmCancel = confirm(
-    "Cancel this service request?"
-  );
+  const { isConfirmed } = await Swal.fire({
+    icon: "warning",
+    title: "Cancel Service?",
+    text: "Are you sure you want to cancel this service request?",
+    showCancelButton: true,
+    confirmButtonText: "Yes, Cancel It",
+    cancelButtonText: "No",
+    confirmButtonColor: "#d33"
+  });
 
-  if (!confirmCancel) return;
+  if (!isConfirmed) return;
 
-  const reason = prompt(
-    "Enter cancellation reason:"
-  );
+  const { value: reason } = await Swal.fire({
+    title: "Cancellation Reason",
+    input: "textarea",
+    inputPlaceholder: "Enter reason for cancellation...",
+    inputAttributes: { required: true },
+    showCancelButton: true,
+    confirmButtonText: "Submit",
+    preConfirm: (val) => {
+      if (!val?.trim()) {
+        Swal.showValidationMessage("Reason is required");
+      }
+      return val?.trim();
+    }
+  });
 
-  if (!reason) {
-
-    showToast(
-      "Reason required",
-      "warning"
-    );
-
-    return;
-  }
+  if (!reason) return;
 
   try {
-    const serviceRef =
-  doc(db, "services", serviceId);
+  const serviceRef = doc(db, "services", serviceId);
+  const serviceSnap = await getDoc(serviceRef);
+  const serviceData = serviceSnap.data();
 
-const serviceSnap =
-  await getDoc(serviceRef);
-
-const serviceData =
-  serviceSnap.data();
-
-    await updateDoc(
-      serviceRef,
+  await updateDoc(serviceRef, {
+    serviceStatus: "cancelled",
+    cancelReason: reason,
+    cancelledRole: "customer",
+    cancelledBy: currentUser.uid,
+    cancelledAt: serverTimestamp(),
+    history: [
+      ...(serviceData.history || []),
       {
-        serviceStatus: "cancelled",
-        cancelReason: reason,
-        cancelledRole: "customer",
-        cancelledBy: currentUser.uid,
-        cancelledAt: serverTimestamp(),
-
-        history: [
-  ...(serviceData.history || []),
-  {
-    action: "service_cancelled",
-
-    at: new Date(),
-
-    clientAt: new Date(),
-
-    by: currentUser.uid,
-
-    role: "customer"
-  }
-]
+        action: "service_cancelled",
+        at: new Date(),
+        clientAt: new Date(),
+        by: currentUser.uid,
+        role: "customer"
       }
-    );
+    ]
+  });
 
-    showToast(
-      "Service cancelled",
-      "success"
-    );
+  // ✅ DELETE LOCK DOC so this car can be serviced again
+  const lockId = `${currentUser.uid}_${serviceData.carId}`;
+  await deleteDoc(doc(db, "serviceLocks", lockId));
 
-  }
-
-  catch (err) {
-
-    console.log(err);
-
-    showToast(
-      "Cancellation failed",
-      "error"
-    );
-
-  }
-
+  showToast("Service cancelled", "success");
+} catch (err) {
+  console.error(err);
+  showToast("Cancellation failed", "error");
+}
 }
 
 window.cancelService = cancelService;
@@ -1319,7 +1328,7 @@ timelineStages.map(stage=>{
 
 const historyItem =
 history.find(
-h => h.action === stage.key
+h => (h.action)  === stage.key
 );
 
 return `

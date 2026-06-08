@@ -2751,3 +2751,338 @@ font-size:13px;
 }
 
 }
+
+/* =================================
+   MANAGE SERVICES
+================================= */
+
+.page-header{
+margin-bottom:24px;
+}
+
+.page-header h1{
+font-size:32px;
+margin-bottom:6px;
+}
+
+.page-header p{
+color:#64748b;
+}
+
+.manage-stats{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:20px;
+margin-bottom:24px;
+}
+
+.manage-stat-card{
+background:#fff;
+padding:24px;
+border-radius:20px;
+}
+
+.manage-stat-card span{
+color:#64748b;
+font-size:14px;
+}
+
+.manage-stat-card h2{
+margin-top:10px;
+font-size:30px;
+}
+
+.manage-filters{
+margin-bottom:20px;
+}
+
+.manage-filters input{
+width:100%;
+padding:14px;
+border:1px solid #e5e7eb;
+border-radius:12px;
+}
+
+.manage-table-card{
+background:#fff;
+border-radius:20px;
+padding:20px;
+overflow:auto;
+}
+
+.manage-table{
+width:100%;
+border-collapse:collapse;
+}
+
+.manage-table th{
+text-align:left;
+padding:16px;
+border-bottom:1px solid #e5e7eb;
+}
+
+.manage-table td{
+padding:16px;
+border-bottom:1px solid #f1f5f9;
+}
+
+.monitor-btn{
+background:#2563eb;
+color:white;
+border:none;
+padding:10px 18px;
+border-radius:10px;
+cursor:pointer;
+font-weight:600;
+}
+
+
+
+.service-card{
+background:#fff;
+border-radius:20px;
+padding:20px;
+box-shadow:0 2px 10px rgba(0,0,0,.05);
+}
+
+.service-card-top{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:20px;
+}
+
+.vehicle-info{
+display:flex;
+gap:15px;
+align-items:center;
+}
+
+.vehicle-image{
+width:80px;
+height:60px;
+object-fit:cover;
+border-radius:10px;
+}
+
+.status-badge{
+padding:8px 14px;
+border-radius:999px;
+background:#dbeafe;
+color:#2563eb;
+font-size:12px;
+font-weight:700;
+}
+
+.service-card-body{
+display:grid;
+grid-template-columns:1fr;
+gap:12px;
+margin-bottom:20px;
+}
+
+.service-card-body label{
+font-size:12px;
+color:#64748b;
+}
+
+.service-card-body p{
+font-weight:600;
+}
+
+.service-card-footer{
+display:flex;
+justify-content:flex-end;
+}
+
+/* =================================
+   DASHBOARD LIST UI (ACTIVE SERVICES)
+================================= */
+.manage-stats-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 18px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    position: relative;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+}
+
+.stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-right: 12px;
+}
+.stat-icon.blue { background: #e0f2fe; color: #0284c7; }
+.stat-icon.green { background: #dcfce7; color: #16a34a; }
+.stat-icon.orange { background: #ffedd5; color: #ea580c; }
+.stat-icon.red { background: #fee2e2; color: #dc2626; }
+.stat-icon.purple { background: #f3e8ff; color: #9333ea; }
+
+.stat-info span {
+    font-size: 12px;
+    color: #64748b;
+    display: block;
+}
+
+.stat-info h2 {
+    font-size: 24px;
+    margin-top: 4px;
+    color: #0f172a;
+}
+
+.stat-card a {
+    position: absolute;
+    bottom: 18px;
+    right: 18px;
+    font-size: 12px;
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+/* Filters */
+.list-filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.filter-search input, .filter-select {
+    padding: 10px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 14px;
+    outline: none;
+    background: #fff;
+}
+.filter-search { flex: 1; }
+.filter-search input { width: 100%; }
+
+.filter-btn {
+    padding: 10px 20px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #475569;
+}
+
+/* Table / Grid Layout */
+.dashboard-list-container {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #f1f5f9;
+    overflow-x: auto;
+}
+
+.list-header, .list-row {
+    display: grid;
+    /* 10 columns matching the reference image layout */
+    grid-template-columns: 0.8fr 1.5fr 1.5fr 1.2fr 1.2fr 1.2fr 1fr 1fr 0.8fr 1fr;
+    gap: 12px;
+    align-items: center;
+    padding: 16px 20px;
+    min-width: 1200px;
+}
+
+.list-header {
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.list-row {
+    border-bottom: 1px solid #f8fafc;
+    transition: background 0.2s;
+}
+.list-row:hover { background: #f8fafc; }
+
+/* Cell Content Styles */
+.col-id { color: #2563eb; font-weight: 600; font-size: 13px; }
+
+.col-flex {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.col-flex img {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: #f1f5f9;
+}
+
+.col-flex .img-avatar { border-radius: 50%; }
+
+.text-group h4 {
+    font-size: 13px;
+    color: #0f172a;
+    margin-bottom: 2px;
+}
+
+.text-group p {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.badge {
+    padding: 6px 12px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+}
+.badge.in-progress { background: #e0f2fe; color: #0284c7; }
+.badge.pending { background: #ffedd5; color: #ea580c; }
+.badge.cancellation { background: #fee2e2; color: #dc2626; }
+
+.btn-monitor {
+    background: #f1f5f9;
+    color: #2563eb;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.btn-monitor:hover { background: #e2e8f0; }
+
+/* =========================================
+  MENU BUTTON OVERLAP
+========================================= */
+
+/* Add a smooth transition to the topbar */
+.service-topbar {
+    transition: padding-left 0.35s cubic-bezier(.4,0,.2,1);
+}
+
+/* Push the text to the right when the sidebar is closed (Desktop only) */
+@media (min-width: 769px) {
+    .service-layout.sidebar-collapsed .service-topbar {
+        padding-left: 80px;
+    }
+}

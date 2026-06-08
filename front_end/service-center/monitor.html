@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Monitoring Center</title>
+    <link rel="stylesheet" href="monitor.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+
+    <div class="monitor-container">
+        <div class="page-header">
+            <div>
+                <h1>Service Monitoring & Approval Center</h1>
+                <p>Monitor mechanic activity, review progress and take action</p>
+            </div>
+            <button id="backBtn" class="header-back-btn">
+                <i class="fa-solid fa-arrow-left"></i> Back to Services
+            </button>
+        </div>
+
+        <section class="top-overview-card">
+            
+            <div class="overview-col vehicle-col">
+                <img id="vehicleImage" src="./broken-car.png" alt="Vehicle">
+                <div class="vehicle-info">
+                    <h2 id="vehicleTitle">Loading...</h2>
+                    <span class="badge-blue" id="serviceType">Loading...</span>
+                    <div class="meta-row">
+                        <div>
+                            <span class="meta-label">Customer</span>
+                            <div class="meta-val"><i class="fa-regular fa-user"></i> <span id="customerName">-</span></div>
+                        </div>
+                        <div>
+                            <span class="meta-label">Phone</span>
+                            <div class="meta-val"><i class="fa-solid fa-phone"></i> <span id="customerPhone">-</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="overview-col person-col">
+                <img id="mechanicImage" src="./default-avatar.png" alt="Mechanic">
+                <div class="person-info">
+                    <span class="meta-label">Mechanic</span>
+                    <h3 id="mechanicName">Loading...</h3>
+                    <div class="meta-val"><i class="fa-solid fa-phone"></i> <span id="mechanicPhone">-</span></div>
+                </div>
+            </div>
+
+            <div class="overview-col person-col">
+                <div class="icon-circle"><i class="fa-regular fa-building"></i></div>
+                <div class="person-info">
+                    <span class="meta-label">Service Center</span>
+                    <h3 id="centerName">Loading...</h3>
+                    <div class="meta-val"><i class="fa-solid fa-location-dot"></i> <span id="centerLocation">-</span></div>
+                </div>
+            </div>
+
+            <div class="overview-col status-col">
+                <div class="status-top">
+                    <span class="meta-label">Status</span>
+                    <span class="badge-warning" id="statusBadge">LOADING</span>
+                </div>
+                <div class="duration-box">
+                    <span class="meta-label">Duration</span>
+                    <div class="duration-time"><i class="fa-regular fa-clock"></i> <span id="serviceDuration">00h 00m 00s</span></div>
+                </div>
+            </div>
+
+        </section>
+<!-- Mechanic Cancel Request — top alert card (visible near re-inspection section) -->
+        <section class="card mechanic-cancel-top-card mt-20" id="mechanicCancelTopCard" style="display:none;">
+            <div style="display:flex;align-items:flex-start;gap:16px;">
+                <div style="background:#fee2e2;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa-solid fa-triangle-exclamation" style="color:#dc2626;font-size:18px;"></i>
+                </div>
+                <div style="flex:1;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <h3 style="color:#b91c1c;font-size:16px;">⚠️ Cancellation Requested</h3>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+                        <div>
+                            <span style="font-size:11px;color:#64748b;font-weight:600;display:block;">Requested By</span>
+                            <span id="topCancelMechName" style="font-size:14px;font-weight:700;color:#0f172a;">—</span>
+                        </div>
+                        <div>
+                            <span style="font-size:11px;color:#64748b;font-weight:600;display:block;">Reason</span>
+                            <span id="topCancelReason" style="font-size:14px;color:#374151;">—</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:16px;">
+                        <span style="font-size:12px;color:#64748b;"><i class="fa-regular fa-clock"></i> <span id="topCancelTime">—</span></span>
+                    </div>
+                    <div style="display:flex;gap:12px;">
+                        <button id="topApproveCancelBtn" style="flex:1;padding:11px 0;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;">
+                            ✓ Approve Cancellation
+                        </button>
+                        <button id="topRejectCancelBtn" style="flex:1;padding:11px 0;background:#fff;color:#dc2626;border:2px solid #dc2626;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;">
+                            ✕ Reject Cancellation
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+<!-- reinspection media card -->
+        <section class="card re-inspection-media-card mt-20" id="reInspectionMediaCard" style="display: none;">
+            <div class="card-header">
+                <h3 style="color: #b91c1c;"><i class="fa-solid fa-triangle-exclamation"></i> Re-Inspection Fix Media</h3>
+                <p style="font-size: 13px; color: #7f1d1d;">Mechanic's submitted evidence for the requested fixes.</p>
+            </div>
+            <div class="rs-media-grid">
+                <div class="rs-media-col">
+                    <h4 class="rs-col-title">Fix Photos (<span id="rsPhotoCount">0</span>)</h4>
+                    <div class="media-gallery" id="rsPhotoGallery"></div>
+                </div>
+                <div class="rs-media-col">
+                    <h4 class="rs-col-title">Fix Videos (<span id="rsVideoCount">0</span>)</h4>
+                    <div class="media-gallery" id="rsVideoGallery"></div>
+                </div>
+            </div>
+        </section>
+
+        <div class="dashboard-grid">
+            
+            <div class="grid-col">
+                <div class="card progress-card">
+                    <div class="card-header">
+                        <h3>Service Progress</h3>
+                        <span class="live-indicator"><span class="dot"></span> Live</span>
+                    </div>
+                    <div class="timeline" id="progressTimeline">
+                        <p class="loading-text">Loading timeline...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-col">
+                <div class="card activity-card">
+                    <div class="card-header">
+                        <h3>Live Activity Feed</h3>
+                        <!-- <a href="#" class="link-text">View All</a> -->
+                    </div>
+                    <div class="activity-feed" id="activityFeed">
+                        <p class="loading-text">Loading feed...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-col">
+                <div class="card summary-card">
+                    <div class="card-header">
+                        <h3>Inspection Summary</h3>
+                        <!-- <a href="#" class="link-text">View Details</a> -->
+                    </div>
+                    <div class="summary-list" id="inspectionSummary">
+                        <p class="loading-text">Awaiting inspection...</p>
+                    </div>
+                </div>
+
+                <div class="card summary-card mt-20">
+                    <div class="card-header">
+                        <h3>Test Drive Summary</h3>
+                        <!-- <a href="#" class="link-text">View Details</a> -->
+                    </div>
+                    <div class="summary-list" id="testDriveSummary">
+                        <p class="loading-text">Awaiting test drive...</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <section class="card media-card mt-20">
+            <div class="card-header">
+                <h3>Media Review Center</h3>
+            </div>
+            <div class="media-tabs" id="mediaTabs">
+                <button class="media-tab active" data-stage="before">Before Service <span id="countBefore">0</span></button>
+                <button class="media-tab" data-stage="during">During Service <span id="countDuring">0</span></button>
+                <button class="media-tab" data-stage="after">After Service <span id="countAfter">0</span></button>
+                <button class="media-tab" data-stage="video">Videos <span id="countVideo">0</span></button>
+            </div>
+            <div class="media-gallery" id="mediaGallery">
+                <p class="loading-text">No media uploaded for this stage.</p>
+            </div>
+        </section>
+
+        <div class="bottom-grid mt-20">
+            
+            <div class="card admin-actions-card">
+                <div class="card-header">
+                    <h3>Admin Actions</h3>
+                </div>
+               <div class="action-buttons">
+    <div class="action-btn-box red" id="cancelActionContainer" style="display: none;">
+        <div class="icon"><i class="fa-solid fa-xmark"></i></div>
+        <h4>Cancel Service</h4>
+        <p>Cancel this service with a valid reason before tracking completion.</p>
+        <button id="cancelBtn">Cancel Service</button>
+    </div>
+
+    <div class="action-btn-box orange" id="mechanicCancelContainer" style="display: none;">
+        <div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h4>Mechanic Cancel Request</h4>
+        <p>Review and act on the mechanic's request to abort this service.</p>
+        <div style="display: flex; gap: 8px; width: 100%;">
+            <button id="approveCancelBtn" style="background: #dc2626; color: white;">Approve</button>
+            <button id="rejectCancelBtn" style="background: #475569; color: white;">Reject</button>
+        </div>
+    </div>
+
+    <div class="action-btn-box green" id="reviewActionsContainer" style="display: none;">
+        <div class="icon"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
+        <h4>Review Submission</h4>
+        <p>Evaluate the job card details to approve work or request fixes.</p>
+        <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+            <button id="approveBtn">Approve Work</button>
+            <button id="reinspectBtn" style="background: transparent; border: 1px solid #ea580c; color: #ea580c;">Request Re-Inspection</button>
+        </div>
+    </div>
+
+    <div class="action-btn-box blue" id="completeActionContainer" style="display: none;">
+        <div class="icon"><i class="fa-regular fa-flag"></i></div>
+        <h4>Mark As Completed</h4>
+        <p>Finalize the approved operations and commit records to history.</p>
+        <button id="completeBtn">Mark Completed</button>
+    </div>
+</div>
+            </div>
+
+            <div class="card analytics-card">
+                <div class="card-header">
+                    <h3>Service Analytics</h3>
+                </div>
+                <div class="analytics-grid">
+                    <div class="stat-box">
+                        <span class="label">Total Photos</span>
+                        <h2 id="photoCount">0</h2>
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">Total Videos</span>
+                        <h2 id="videoCount">0</h2>
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">Test Drive Distance</span>
+                        <h2 id="distanceMetric">0 KM</h2>
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">Current Stage</span>
+                        <h2 id="analyticsStage" class="text-blue">Pending</h2>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="imageModal" class="image-modal">
+        <span class="close-modal">&times;</span>
+        <img class="modal-content" id="modalImage">
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script type="module" src="monitor.js"></script>
+</body>
+</html>

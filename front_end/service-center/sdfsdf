@@ -1,3 +1,342 @@
+// =======================
+// LOAD MECHANICS
+// =======================
+async function loadMechanicsForService(serviceId) {
+
+  const container = document.getElementById(`mech-${serviceId}`);
+
+  const q = query(
+    collection(db, "jobCards"),
+    where("serviceId", "==", serviceId),
+    where("assignedServiceCenterId", "==", currentUser.uid)
+  );
+
+  const snap = await getDocs(q);
+
+  if (snap.empty) {
+    container.innerHTML = "No mechanic assigned";
+    return;
+  }
+
+  let html = "<b>Mechanics:</b><br>";
+
+  for (const docSnap of snap.docs) {
+
+    const data = docSnap.data();
+
+    const mechSnap = await getDoc(doc(db, "users", data.mechanicId));
+
+    const name = mechSnap.exists() ? mechSnap.data().name : "Unknown";
+
+    html += `• ${name} → ${data.status}<br>`;
+  }
+
+  container.innerHTML = html;
+}
+
+// =======================
+// MEDIA PREVIEW
+// =======================
+async function loadMediaPreview(serviceId) {
+
+  const container = document.getElementById(`media-${serviceId}`);
+  if (!container) return;
+container.innerHTML = `<span style="font-size:12px;">Loading media...</span>`;
+
+
+  const snap = await getDocs(
+    collection(db, "services", serviceId, "media")
+  );
+
+  let before = [], during = [], after = [];
+
+  snap.forEach(doc => {
+    const data = doc.data();
+
+    if (data.stage === "before") before.push(data.url);
+    if (data.stage === "during") during.push(data.url);
+    if (data.stage === "after") after.push(data.url);
+  });
+
+ let html = `<div style="margin-top:10px;"></div>`;
+
+// show only if images exist
+if (before.length > 0) {
+  html += `<div style="margin-bottom:10px;"><b>Before:</b><br>${renderImages(before)}</div>`;
+}
+
+if (during.length > 0) {
+  html += `<div style="margin-bottom:10px;"><b>During:</b><br>${renderImages(during)}</div>`;
+}
+
+if (after.length > 0) {
+  html += `<div style="margin-bottom:10px;"><b>After:</b><br>${renderImages(after)}</div>`;
+}
+
+// if no images at all → hide entire section
+if (html === "") {
+  container.style.display = "none";
+} else {
+  container.style.display = "block";
+  container.innerHTML = html;
+}
+}
+
+function renderImages(list) {
+  return list.map(url =>
+    `<img src="${url}" style="width:60px;margin-right:5px;">`
+  ).join("");
+}
+
+// =======================
+// COMPLETE SERVICE
+// =======================
+window.completeService = async function(serviceId) {
+
+  try {
+
+    await runTransaction(db, async (transaction) => {
+
+      const serviceRef = doc(db, "services", serviceId);
+      const serviceSnap = await transaction.get(serviceRef);
+
+      if (!serviceSnap.exists()) {
+        throw new Error("Service not found");
+      }
+
+      const service = serviceSnap.data();
+
+      // 🔹 update service
+      transaction.update(serviceRef, {
+        serviceStatus: "completed",
+        completedAt: serverTimestamp(),
+
+        history: arrayUnion({
+          action: "completed",
+          by: currentUser.uid,
+          role: "service_center",
+          at: serverTimestamp()
+        })
+      });
+
+      // 🔹 update jobCard (single target)
+      if (!service.jobCardId) {
+  throw new Error("Missing jobCardId → data inconsistency");
+}
+      const jobRef = doc(db, "jobCards", service.jobCardId);
+
+      transaction.update(jobRef, {
+        status: "completed",
+        updatedAt: serverTimestamp()
+      });
+
+    });
+
+    alert("✅ Service fully completed");
+
+  } catch (error) {
+    console.error("Complete failed:", error);
+    alert("Failed to complete service");
+  }
+};
+
+// =======================
+// CANCEL SERVICE
+// =======================
+window.cancelService = async function(serviceId) {
+
+  const reason = prompt("Enter cancel reason");
+  if (!reason) return;
+
+  await updateDoc(doc(db, "services", serviceId), {
+    serviceStatus: "cancelled",
+    cancelReason: reason,
+    cancelledAt: serverTimestamp(),
+    cancelledBy: currentUser.uid
+  });
+
+  alert("Cancelled");
+};
+
+//approve work
+window.approveWork = async function(serviceId) {
+
+  try {
+
+    await runTransaction(db, async (transaction) => {
+
+      const serviceRef = doc(db, "services", serviceId);
+      const serviceSnap = await transaction.get(serviceRef);
+
+      if (!serviceSnap.exists()) {
+        throw new Error("Service not found");
+      }
+
+      const service = serviceSnap.data();
+
+      // 🔹 update service
+      transaction.update(serviceRef, {
+        serviceStatus: "work_done",
+        rejectionReason: null,
+        approvedAt: serverTimestamp(),
+
+        history: arrayUnion(
+          {
+            action: "approved",
+            by: currentUser.uid,
+            role: "service_center",
+            at: serverTimestamp()
+          },
+          {
+            action: "work_done",
+            by: currentUser.uid,
+            role: "service_center",
+            at: serverTimestamp()
+          }
+        )
+      });
+
+     // 🔥 SINGLE TARGET UPDATE (NO QUERY)
+     if (!service.jobCardId) {
+  throw new Error("Missing jobCardId → data inconsistency");
+}
+      const jobRef = doc(db, "jobCards", service.jobCardId);
+
+      transaction.update(jobRef, {
+       status: "work_done",
+        updatedAt: serverTimestamp(),
+        rejectionReason: null
+      });
+
+    });
+
+    alert("Work approved. Ready for completion.");
+
+  } catch (error) {
+    console.error("Approval failed:", error);
+    alert(error.message || "Failed to approve work");  }
+};
+
+//reject work
+window.rejectWork = async function(serviceId) {
+
+  const reason = prompt("Enter rejection reason");
+  if (!reason) return;
+
+  try {
+
+    await runTransaction(db, async (transaction) => {
+
+      const serviceRef = doc(db, "services", serviceId);
+      const serviceSnap = await transaction.get(serviceRef);
+
+      if (!serviceSnap.exists()) {
+        throw new Error("Service not found");
+      }
+
+      const service = serviceSnap.data();
+
+      // 🔹 update service
+      transaction.update(serviceRef, {
+        serviceStatus: "in_progress",
+        rejectionReason: reason,
+
+        history: arrayUnion({
+          action: "rejected",
+          reason: reason,
+          by: currentUser.uid,
+          role: "service_center",
+          at: serverTimestamp()
+        })
+      });
+
+      // 🔹 update jobCard
+      if (!service.jobCardId) {
+  throw new Error("Missing jobCardId → data inconsistency");
+}
+      const jobRef = doc(db, "jobCards", service.jobCardId);
+
+      transaction.update(jobRef, {
+        status: "in_progress",
+        rejectionReason: reason,
+        updatedAt: serverTimestamp()
+      });
+
+    });
+
+    alert("Work rejected → back to mechanic");
+
+  } catch (error) {
+    console.error("Reject failed:", error);
+    alert("Reject failed");
+  }
+};
+//approve cancel
+
+window.approveCancel = async function(serviceId) {
+
+  try {
+
+    await runTransaction(db, async (transaction) => {
+
+      const serviceRef = doc(db, "services", serviceId);
+      const serviceSnap = await transaction.get(serviceRef);
+
+      if (!serviceSnap.exists()) {
+        throw new Error("Service not found");
+      }
+
+      const service = serviceSnap.data();
+
+      // 🔹 update service
+      transaction.update(serviceRef, {
+        serviceStatus: "cancelled",
+        cancelledAt: serverTimestamp(),
+        cancelApproved: true,
+
+        history: arrayUnion({
+          action: "cancelled",
+          by: currentUser.uid,
+          role: "service_center",
+          at: serverTimestamp()
+        })
+      });
+
+      // 🔹 update jobCard
+      if (!service.jobCardId) {
+  throw new Error("Missing jobCardId → data inconsistency");
+}
+      const jobRef = doc(db, "jobCards", service.jobCardId);
+
+      transaction.update(jobRef, {
+        status: "cancelled",
+        updatedAt: serverTimestamp()
+      });
+
+    });
+
+    alert("Service cancelled");
+
+  } catch (error) {
+    console.error("Cancel failed:", error);
+    alert("Cancel failed");
+  }
+};
+
+//reject cancel
+window.rejectCancel = async function(serviceId) {
+
+  await updateDoc(doc(db, "services", serviceId), {
+    cancelRequested: false,
+    cancelReason: null
+  });
+
+  alert("Cancel request rejected");
+};
+
+
+//
+
 import { db, auth } from "../firebase.js";
 
 import {
@@ -12,8 +351,7 @@ import {
   getDoc,
   addDoc,
   deleteDoc,
-  arrayUnion,
-  writeBatch
+  arrayUnion
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 import {
@@ -29,119 +367,8 @@ import {
   deleteObject
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-storage.js";
 
+
 let currentUser = null;
-let serviceTimerInterval = null;
-const storage = getStorage();
-
-// =======================================
-// STAGE 1 HELPERS — Vehicle Received
-// =======================================
-window.vrPreviewImage = function(inputId, previewId, nameId) {
-  const input = document.getElementById(inputId);
-  const preview = document.getElementById(previewId);
-  const placeholder = inputId === 'vrPlateInput' ? document.getElementById('vrPlatePlaceholder') : document.getElementById('vrCarPlaceholder');
-  const nameEl = document.getElementById(nameId);
-  if (!input || !input.files || !input.files[0]) return;
-  const file = input.files[0];
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    preview.style.display = 'flex';
-    preview.innerHTML = `<img src="${e.target.result}" alt="preview">`;
-    if (placeholder) placeholder.style.display = 'none';
-    if (nameEl) nameEl.textContent = file.name;
-  };
-  reader.readAsDataURL(file);
-};
-
-window.onMediaFileSelected = function() {
-  // no-op placeholder — file gets picked up by uploadMedia
-};
-
-window.markVehicleReceived = async function(jobId) {
-  // Validate both images are selected
-  const plateInput = document.getElementById('vrPlateInput');
-  const carInput   = document.getElementById('vrCarInput');
-
-  if (!plateInput?.files?.[0]) {
-    Swal.fire({ icon:'warning', title:'Number Plate Photo Required', text:'Please upload the vehicle number plate photo.', confirmButtonColor:'#2563eb' });
-    return;
-  }
-  if (!carInput?.files?.[0]) {
-    Swal.fire({ icon:'warning', title:'Car Bay Photo Required', text:'Please upload the full car photo at the service bay.', confirmButtonColor:'#2563eb' });
-    return;
-  }
-  if (await guardCancelPending(jobId)) return;
-
-  const btn = document.getElementById('vrMarkReceivedBtn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...'; }
-
-  try {
-    const jobRef  = doc(db, "jobCards", jobId);
-    const jobSnap = await getDoc(jobRef);
-    if (!jobSnap.exists()) return;
-    const jobData2   = jobSnap.data();
-    const serviceId = jobData2.serviceId;
-    const assignedServiceCenterId = jobData2.assignedServiceCenterId;
-
-    const metadata = { customMetadata: { ownerId: currentUser.uid, assignedServiceCenterId } };
-    const uploadFile = async (file, label) => {
-      const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
-      // FIX: Added /media/ to the path so it is approved by your Firebase Storage Rules
-      const storageRef = ref(storage, `services/${serviceId}/media/vehicle_received/${label}_${Date.now()}.${ext}`);
-      const task = uploadBytesResumable(storageRef, file, metadata);
-      return new Promise((res, rej) => {
-        task.on('state_changed', null, rej, async () => {
-          const url = await getDownloadURL(task.snapshot.ref);
-          await addDoc(collection(db, 'services', serviceId, 'media'), {
-            serviceId, jobId,
-            uploadedBy: currentUser.uid,
-            url,
-            filePath: storageRef.fullPath,
-            fileName: file.name,
-            type: 'photo',
-            label,
-            stage: 'vehicle_received',
-            createdAt: serverTimestamp()
-          });
-          res(url);
-        });
-      });
-    };
-
-    await uploadFile(plateInput.files[0], 'vehicle_received_number_plate');
-    await uploadFile(carInput.files[0],   'vehicle_received_full_car');
-
-    // Advance stage
-    const historyPayload = [
-        { action: 'vehicle_received', message: "Vehicle condition and photos recorded", by: currentUser.uid, role: 'mechanic', at: new Date() },
-        { action: 'stage_advanced', from: 'vehicle_received', to: 'service_started', by: currentUser.uid, role: 'mechanic', at: new Date() }
-    ];
-
-    await updateDoc(doc(db, 'services', serviceId), {
-      currentStep: 'service_started',
-      updatedAt: serverTimestamp(),
-      history: arrayUnion(...historyPayload)
-    });
-    await updateDoc(jobRef, {
-      progress: 'service_started',
-      'liveTracking.currentStage': 'Service Started',
-      'liveTracking.currentStageIndex': 1,
-      stageSummary: { totalStages: 6, completedStages: 1, currentStage: 'Service Started', progressPercent: 16 },
-      updatedAt: serverTimestamp(),
-      history: arrayUnion(...historyPayload)
-    });
-
-    Swal.fire({ icon:'success', title:'Vehicle Received!', text:'Photos uploaded and stage advanced successfully.', confirmButtonColor:'#2563eb', timer:2000, showConfirmButton:false });
-    setTimeout(() => loadActiveService(jobId), 2100);
-
-  } catch (err) {
-    console.error('Vehicle received upload failed:', err);
-    Swal.fire({ icon:'error', title:'Upload Failed', text: err.message });
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Mark Vehicle Received'; }
-  }
-};
-
-
 
 // Guard: blocks all mechanic actions if cancel request is pending
 async function guardCancelPending(jobId) {
@@ -160,6 +387,9 @@ async function guardCancelPending(jobId) {
   }
   return false; // not blocked
 }
+let serviceTimerInterval = null;
+const storage = getStorage();
+
 // logout
 const logoutBtn = document.getElementById("logoutBtn");
 
@@ -251,10 +481,8 @@ function setupRealtimeJobListener(activeJobId) {
 
         // 3. Re-inspection requested
         if (data.status === "in_progress" && data.progress === "re_inspection") {
-            // FIX: Check for the specific Re-Inspection UI so it correctly triggers even from the Pending screen
-            const isOnReInspectionUI = document.querySelector(".rs-dashboard-wrapper");
-            
-            if (!isOnReInspectionUI) {
+            const currentStageBox = document.querySelector(".current-stage-box h2");
+            if (currentStageBox && currentStageBox.innerText !== "Re-Inspection") {
                 Swal.fire({
                     icon: "warning",
                     title: "Re-Inspection Requested",
@@ -297,8 +525,7 @@ async function autoFetchActiveJob(uid) {
         const q = query(
             collection(db, "jobCards"),
             where("mechanicId", "==", uid),
-            // FIX: Removed "assigned" and "job_assigned" so new jobs don't appear here until started
-            where("status", "in", ["in_progress", "pending_approval", "re_inspection"])
+            where("status", "in", ["assigned", "job_assigned", "in_progress", "pending_approval", "re_inspection"])
         );
         
         const snap = await getDocs(q);
@@ -343,80 +570,27 @@ function showEmptyState() {
 }
 //media flow function
 window.openMediaFlow = async function(jobId) {
-  try {
-    // 🛑 1. CHECK FOR EXISTING ACTIVE JOBS FIRST 🛑
-    const activeCheckQuery = query(
-      collection(db, "jobCards"),
-      where("mechanicId", "==", currentUser.uid),
-      where("status", "in", ["in_progress", "pending_approval", "re_inspection"])
-    );
-    const activeCheckSnap = await getDocs(activeCheckQuery);
-    
-    if (!activeCheckSnap.empty) {
-        alert("⚠️ You already have an active job in progress! Please complete your current vehicle or wait for admin approval before starting a new one.");
-        return; // Stop them from starting another job
-    }
 
-    const jobRef = doc(db, "jobCards", jobId);
+  const jobRef = doc(db, "jobCards", jobId);
 
-    // 1️⃣ get job first
-    const jobSnap = await getDoc(jobRef);
-    if (!jobSnap.exists()) {
-        alert("Error: Job not found in database.");
-        return;
-    }
+  await updateDoc(jobRef, {
+    status: "in_progress",
+    startedAt: serverTimestamp()
+  });
+  //history function for media flow start
+  const jobSnap = await getDoc(jobRef);
+const serviceId = jobSnap.data().serviceId;
 
-    const jobData = jobSnap.data();
-    
-    // SAFETY CHECK: Ensure data and serviceId exist before trying to read them
-    if (!jobData || !jobData.serviceId) {
-        alert("Error: Missing Service ID on this job card.");
-        return;
-    }
-    const serviceId = jobData.serviceId;
-
-    // 🔒 USE FIRESTORE BATCH TO PREVENT DESYNC
-    const batch = writeBatch(db);
-
-    // 2️⃣ update ONLY job card
-    batch.update(jobRef, {
-      status: "in_progress",
-      startedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      history: arrayUnion({
-        action: "job_started", 
-        message: "Mechanic started working on the vehicle",
-        by: currentUser.uid,
-        role: "mechanic",
-        at: new Date(), 
-        jobId: jobId
-      })
-    });
-
-    // 3️⃣ update service doc status ONLY
-    batch.update(doc(db, "services", serviceId), {
-      serviceStatus: "in_progress",
-      updatedAt: serverTimestamp(),
-      history: arrayUnion({
-        action: "job_started", // Standardized to action
-        message: "Mechanic started working on the vehicle",
-        by: currentUser.uid,
-        role: "mechanic",
-        at: new Date(), // Standardized to at
-        jobId: jobId
-      })
-    });
-
-    // 🔥 COMMIT BOTH SIMULTANEOUSLY
-    await batch.commit();
-
-    // 4️⃣ redirect
-    window.location.href = `active-service.html?id=${jobId}`;
-
-  } catch (err) {
-    console.error("Start work failed:", err);
-    alert("Failed to start job: " + err.message);
-  }
+await updateDoc(doc(db, "services", serviceId), {
+  history: arrayUnion({
+    action: "work_started",
+    by: currentUser.uid,
+    role: "mechanic",
+    at: new Date()
+  })
+});
+window.location.href =
+`active-service.html?id=${jobId}`;
 };
 
 function startServiceTimer(startedAt) {
@@ -739,9 +913,28 @@ await addDoc(
   }
 );
 
-// 🗑️ DELETED the auto-advance logic! 
-// It was skipping the history/stageSummary updates and breaking the timeline.
-// The mechanic must explicitly click "Mark Stage Complete" now to trigger the correct tracking updates.
+// STEP UPDATE
+// Get all media again
+const mediaList = (
+  await getDocs(
+    collection(db, "services", serviceId, "media")
+  )
+).docs.map(doc => doc.data());
+
+// Count images for this stage
+const stageImages = mediaList.filter(m => m.stage === stage);
+
+if (stage === "after" && stageImages.length >= 3) {
+  await updateDoc(doc(db, "services", serviceId), {
+    currentStep: "test_drive",
+    updatedAt: serverTimestamp()
+  });
+
+  await updateDoc(doc(db, "jobCards", jobId), {
+    progress: "test_drive",
+    updatedAt: serverTimestamp()
+  });
+}
 
 const container = document.getElementById("progressContainer");
 if (container) {
@@ -958,17 +1151,12 @@ if (!jobSnapCheck.exists()) return;
 const jobStatusCheck = jobSnapCheck.data();
 const serviceData = (await getDoc(doc(db, "services", serviceId))).data();
 
-// Block deletion if cancel is pending
-if (jobStatusCheck.cancelRequested) {
-  alert("⏳ Cancel request pending. Deletions are locked.");
-  return;
-}
-
 // Allow deletion during standard progress OR during re_inspection
 if (jobStatusCheck.status !== "in_progress" && serviceData.currentStep !== "re_inspection") {
   alert("🔒 Cannot modify after submission");
   return;
 }
+
   if (!confirm("Delete this image?")) return;
 
   try {
@@ -1057,17 +1245,9 @@ window.saveInspection = async function(jobId) {
 
     const jobData = jobSnap.data();
 
-   const historyItem = {
-      action: "inspection_saved",
-      by: currentUser.uid,
-      role: "mechanic",
-      at: new Date()
-    };
-
-    // 🔒 USE FIRESTORE BATCH TO PREVENT DESYNC
-    const batch = writeBatch(db);
-
-    batch.update(doc(db, "services", jobData.serviceId), {
+    await updateDoc(
+      doc(db, "services", jobData.serviceId),
+      {
         inspectionReport: {
           issues: checkedIssues,
           severity,
@@ -1075,18 +1255,17 @@ window.saveInspection = async function(jobId) {
           inspectedAt: serverTimestamp(),
           inspectedBy: currentUser.uid
         },
-        updatedAt: serverTimestamp(),
-        history: arrayUnion(historyItem)
-    });
 
-    // ✅ FIX: Synchronize Job Card History
-    batch.update(doc(db, "jobCards", jobId), {
         updatedAt: serverTimestamp(),
-        history: arrayUnion(historyItem)
-    });
 
-    // 🔥 COMMIT BOTH SIMULTANEOUSLY
-    await batch.commit();
+        history: arrayUnion({
+          action: "inspection_saved",
+          by: currentUser.uid,
+          role: "mechanic",
+          at: new Date()
+        })
+      }
+    );
 
     alert("✅ Inspection saved! You can now advance to the next stage.");
     loadActiveService(jobId); // re-render to show advance button
@@ -1108,14 +1287,6 @@ window.saveTestDrive = async function(jobId) {
     const jobSnap   = await getDoc(doc(db, "jobCards", jobId));
     const serviceId = jobSnap.data().serviceId;
 
-   const historyItem = {
-      action: "test_drive_saved",
-      result: status,
-      by: currentUser.uid,
-      role: "mechanic",
-      at: new Date()
-    };
-
     await updateDoc(doc(db, "services", serviceId), {
       testDriveReport: {
         checklist:  checkedItems,
@@ -1128,13 +1299,13 @@ window.saveTestDrive = async function(jobId) {
       },
       testDriveEndedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      history: arrayUnion(historyItem)
-    });
-
-    // ✅ FIX: Synchronize Job Card History
-    await updateDoc(doc(db, "jobCards", jobId), {
-      updatedAt: serverTimestamp(),
-      history: arrayUnion(historyItem)
+      history: arrayUnion({
+        action: "test_drive_saved",
+        result: status,
+        by:     currentUser.uid,
+        role:   "mechanic",
+        at:     new Date()
+      })
     });
 
     alert("Test drive report saved (" + (status === "passed" ? "Passed" : "Failed") + "). You can now advance.");
@@ -1224,50 +1395,63 @@ if (currentIndex >= stages.length - 1) {
 }
     const nextStage = stages[currentIndex + 1];
 
-  // 🔒 USE FIRESTORE BATCH TO PREVENT DESYNC
-    const batch = writeBatch(db);
+   await updateDoc(serviceRef, {
+  currentStep: nextStage,
+  updatedAt: serverTimestamp(),
+  ...(nextStage === "test_drive" ? { testDriveStartedAt: serverTimestamp() } : {}),
 
-    batch.update(serviceRef, {
-      currentStep: nextStage,
-      updatedAt: serverTimestamp(),
-      ...(nextStage === "test_drive" ? { testDriveStartedAt: serverTimestamp() } : {}),
-      history: arrayUnion({
-        action: "stage_advanced",
-        from: current,
-        to: nextStage,
-        by: currentUser.uid,
-        role: "mechanic",
-        at: new Date()
-      })
-    });
+  history: arrayUnion({
+    action: "stage_advanced",
+    from: current,
+    to: nextStage,
+    by: currentUser.uid,
+    role: "mechanic",
+    at: new Date()
+  })
+});
 
-    // sync jobcard progress dynamically
-    const hasReInspection = serviceData.history && serviceData.history.some(h => h.action === "re_inspection_requested");
-    const totalStagesCount = hasReInspection ? 7 : 6;
+// sync jobcard progress
+await updateDoc(
+  doc(db, "jobCards", jobId),
+  {
+    progress: nextStage,
 
-    batch.update(doc(db, "jobCards", jobId), {
-      progress: nextStage,
-      "liveTracking.currentStage": nextStage.replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase()),
-      "liveTracking.currentStageIndex": currentIndex + 1,
-      stageSummary: {
-        totalStages: totalStagesCount,
-        completedStages: currentIndex + 1,
-        currentStage: nextStage.replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase()),
-        progressPercent: Math.floor(((currentIndex + 1) / totalStagesCount) * 100)
-      },
-      history: arrayUnion({
-        action: "stage_advanced",
-        from: current,
-        to: nextStage,
-        by: currentUser.uid,
-        role: "mechanic",
-        at: new Date()
-      }),
-      updatedAt: serverTimestamp()
-    });
+    "liveTracking.currentStage":
+      nextStage
+        .replaceAll("_", " ")
+        .replace(/\b\w/g, c => c.toUpperCase()),
 
-    // 🔥 COMMIT BOTH SIMULTANEOUSLY
-    await batch.commit();
+    "liveTracking.currentStageIndex":
+      currentIndex + 1,
+
+    stageSummary: {
+      totalStages: stages.length,
+
+      completedStages: currentIndex + 1,
+
+      currentStage:
+        nextStage
+          .replaceAll("_", " ")
+          .replace(/\b\w/g, c => c.toUpperCase()),
+
+      progressPercent:
+        Math.floor(
+          ((currentIndex + 1) / stages.length) * 100
+        )
+    },
+
+    history: arrayUnion({
+      action: "stage_advanced",
+      from: current,
+      to: nextStage,
+      by: currentUser.uid,
+      role: "mechanic",
+      at: new Date()
+    }),
+
+    updatedAt: serverTimestamp()
+  }
+);
 
     loadActiveService(jobId);
 
@@ -1334,28 +1518,11 @@ window.uploadReInspectionPhoto = async function(jobId) {
             })
         });
 
-      // 5. Update the Job Card Document (Full tracking sync)
+        // 5. Update the Job Card Document
         await updateDoc(jobRef, {
             status: "pending_approval",
             progress: "pending_approval",
-            "liveTracking.currentStage": "Pending Approval",
-            "liveTracking.enabled": false,
-            "liveTracking.endedAt": serverTimestamp(),
-            stageSummary: {
-                totalStages: 7,
-                completedStages: 7,
-                currentStage: "Pending Approval",
-                progressPercent: 100
-            },
-            updatedAt: serverTimestamp(),
-            history: arrayUnion({
-                action: "stage_advanced",
-                from: "re_inspection",
-                to: "pending_approval",
-                by: currentUser.uid,
-                role: "mechanic",
-                at: new Date()
-            })
+            updatedAt: serverTimestamp()
         });
 
         // 6. Log the media upload
@@ -1475,75 +1642,37 @@ if (btn) {
       return;
     }
 
-   const isReSubmit = serviceData.currentStep === "re_inspection";
-    const totalStagesCount = (serviceData.rejectionHistory?.length > 0 || isReSubmit) ? 7 : 6;
+    // ✅ SAFE COMPLETE (jobCard)
+await updateDoc(jobRef, {
+  status: "pending_approval",
+  completedAt: serverTimestamp()
+});
 
-    // 🔒 USE FIRESTORE BATCH TO PREVENT DESYNC
-    const batch = writeBatch(db);
+// update service status + auto-disable live
+const isReSubmit = serviceData.currentStep === "re_inspection";
+await updateDoc(doc(db, "services", serviceId), {
+  serviceStatus: "pending_approval",
+  currentStep: "pending_approval",
+  liveEnabled: false,
+  liveEndedAt: serverTimestamp(),
+  updatedAt: serverTimestamp(),
+  history: arrayUnion({
+    action: isReSubmit ? "re_submitted_for_approval" : "submitted_for_approval",
+    by: currentUser.uid,
+    role: "mechanic",
+    at: new Date()
+  })
+});
 
-    // ✅ SAFE COMPLETE (jobCard) - Now updates full tracking history
-    batch.update(jobRef, {
-      status: "pending_approval",
-      progress: "pending_approval",
-      completedAt: serverTimestamp(),
-      "liveTracking.currentStage": "Pending Approval",
-      "liveTracking.enabled": false,
-      "liveTracking.endedAt": serverTimestamp(),
-      stageSummary: {
-        totalStages: totalStagesCount,
-        completedStages: totalStagesCount,
-        currentStage: "Pending Approval",
-        progressPercent: 100
-      },
-      history: arrayUnion({
-        action: "stage_advanced",
-        from: serviceData.currentStep,
-        to: "pending_approval",
-        by: currentUser.uid,
-        role: "mechanic",
-        at: new Date()
-      })
-    });
+// ✅ also disable in jobCard liveTracking
+await updateDoc(jobRef, {
+  "liveTracking.enabled": false,
+  "liveTracking.endedAt": serverTimestamp()
+});
 
-    // update service status + auto-disable live
-    batch.update(doc(db, "services", serviceId), {
-      serviceStatus: "pending_approval",
-      currentStep: "pending_approval",
-      liveEnabled: false,
-      liveEndedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      history: arrayUnion({
-        action: isReSubmit ? "re_submitted_for_approval" : "submitted_for_approval",
-        by: currentUser.uid,
-        role: "mechanic",
-        at: new Date()
-      })
-    });
-
-    // 🔥 COMMIT BOTH SIMULTANEOUSLY
-    await batch.commit();
-
-    // ✅ FIX: Trigger UI update so it doesn't freeze on "Submitting..."
-    Swal.fire({
-      icon: "success",
-      title: "Submitted!",
-      text: "Work submitted successfully for admin review.",
-      confirmButtonColor: "#2563eb",
-      timer: 2000,
-      showConfirmButton: false
-    });
-    
-    setTimeout(() => {
-        window.location.reload(); // Hard reload perfectly initializes the Pending Approval dashboard
-    }, 2000);
 
   } catch (error) {
     console.error("Error completing job:", error);
-    alert("Failed to submit: " + error.message);
-    if (btn) {
-      btn.disabled = false;
-      btn.innerText = "✅ Submit for Admin Verification";
-    }
   }
 }
 
@@ -1578,24 +1707,13 @@ window.submitCancelRequest = async function(jobId) {
   if (!jobSnap.exists()) return;
   const serviceId = jobSnap.data().serviceId;
 
- try {
+  try {
     await updateDoc(doc(db, "jobCards", jobId), {
       cancelRequested: true,
       cancelReason: reason,
       cancelRequestedAt: serverTimestamp(),
       cancelRejectionNote: null, // Wipe old data
-      cancelRejectedAt: null,    // Wipe old data
-      "liveTracking.currentStage": "Cancellation Requested",
-      "liveTracking.enabled": false,
-      "liveTracking.endedAt": serverTimestamp(),
-      "stageSummary.currentStage": "Cancellation Requested",
-      history: arrayUnion({
-        action: "cancel_requested",
-        reason,
-        by: currentUser.uid,
-        role: "mechanic",
-        at: new Date()
-      })
+      cancelRejectedAt: null     // Wipe old data
     });
     await updateDoc(doc(db, "services", serviceId), {
       cancelRequested: true,
@@ -1966,8 +2084,14 @@ if (
           stageTimeMap["vehicle_received"] = t.toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit" });
           stageTimeMap["vehicle_received_date"] = t.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
       }
-  } 
-  // FIX: Completely removed the serviceData.createdAt fallback so fake dates don't populate early
+  } else if (serviceData.createdAt) { 
+      // Fallback only if mechanic accepted job before new logging was implemented
+      const t = serviceData.createdAt.toDate ? serviceData.createdAt.toDate() : new Date(serviceData.createdAt);
+      if (t && !isNaN(t)) {
+          stageTimeMap["vehicle_received"] = t.toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit" });
+          stageTimeMap["vehicle_received_date"] = t.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+      }
+  }
 
   // Service Started Execution
   if (startedEvent) {
@@ -1988,8 +2112,7 @@ if (
     if (index < currentIndex) { statusClass = "completed"; statusLabel = "Completed"; }
     if (index === currentIndex) { statusClass = "in-progress"; statusLabel = "In Progress"; }
 
-    // STRICT RULE: Only extract the time string if the stage is 100% completed
-    const timeStr = (statusClass === "completed") ? (stageTimeMap[stage] || "") : "";
+    const timeStr = stageTimeMap[stage] || "";
 
     return `
       <div class="stage-item ${statusClass}">
@@ -2059,27 +2182,25 @@ async function renderCurrentStage(serviceData, jobId, jobData, customerData, cur
   let reInspVideoHtml = "";
 
   if (isReInspection) {
-    const currentRound = serviceData.reInspectionRound || 1;
-    const mediaSnapRe = await getDocs(collection(db, "services", jobData.serviceId, "media"));
-    mediaSnapRe.forEach(mdoc => {
-        const d = mdoc.data();
-        if (d.stage !== "re_inspection") return;
-        const isCurrentRound = (d.reInspectionRound || 1) === currentRound;
-        const isVid = d.type === "video";
-        const safeFilePath = (d.filePath || "").replace(/'/g, "\\'");
-        const thumbHtml = `
-          <div class="rs-thumb-item" data-type="${isVid ? 'video' : 'photo'}" data-current-round="${isCurrentRound}">
-            ${isVid
-              ? `<video src="${d.url}" preload="metadata" onclick="openMediaModal('${d.url}','video')"></video>`
-              : `<img src="${d.url}" alt="fix photo" onclick="openMediaModal('${d.url}','image')">`}
-            <button class="rs-remove-btn" title="Delete" onclick="event.stopPropagation(); deleteReInspMedia('${jobData.serviceId}','${mdoc.id}','${safeFilePath}','${jobId}')">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </div>`;
-        if (isVid) { reInspVideos++; reInspVideoHtml += thumbHtml; }
-        else { reInspPhotos++; reInspPhotoHtml += thumbHtml; }
-    });
-}
+      const mediaSnapRe = await getDocs(collection(db, "services", jobData.serviceId, "media"));
+      mediaSnapRe.forEach(mdoc => {
+          const d = mdoc.data();
+          if (d.stage !== "re_inspection") return; // only re-inspection media
+          const isVid = d.type === "video";
+          const safeFilePath = (d.filePath || "").replace(/'/g, "\\'");
+          const thumbHtml = `
+            <div class="rs-thumb-item" data-type="${isVid ? 'video' : 'photo'}">
+              ${isVid
+                ? `<video src="${d.url}" preload="metadata" onclick="openMediaModal('${d.url}','video')"></video>`
+                : `<img src="${d.url}" alt="fix photo" onclick="openMediaModal('${d.url}','image')">`}
+              <button class="rs-remove-btn" title="Delete" onclick="event.stopPropagation(); deleteReInspMedia('${jobData.serviceId}','${mdoc.id}','${safeFilePath}','${jobId}')">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>`;
+          if (isVid) { reInspVideos++; reInspVideoHtml += thumbHtml; }
+          else { reInspPhotos++; reInspPhotoHtml += thumbHtml; }
+      });
+  }
 
   const reInspectionReady = reInspPhotos >= 1 && reInspPhotos <= 2 && reInspVideos === 1;
 
@@ -2206,10 +2327,7 @@ async function renderCurrentStage(serviceData, jobId, jobData, customerData, cur
   // Ensure top summary is visible if NOT pending
   if (document.getElementById("serviceSummaryCard")) document.getElementById("serviceSummaryCard").style.display = "grid";
 
-// FIX: Added vehicle_received and service_started so the generic button doesn't show up and cause errors
   const showAdvanceBtn =
-    current !== "vehicle_received" &&
-    current !== "service_started" &&
     current !== "service_complete" &&
     current !== "uploading_media" &&
     current !== "re_inspection" &&
@@ -2464,64 +2582,86 @@ if (current === "inspection") {
 
     inspectionContainer.style.display = "block";
 
-    const alreadySaved = !!serviceData.inspectionReport;
+    inspectionContainer.innerHTML = `
 
-    if (alreadySaved) {
-        // ✅ FIX: Display Read-Only summary to prevent the UI freeze loop
-        const r = serviceData.inspectionReport;
-        inspectionContainer.innerHTML = `
-          <div class="inspection-card">
-            <h3>Inspection Findings</h3>
-            <p class="saved-msg">✅ Inspection already saved. You can advance to the next stage.</p>
-            <p><b>Severity:</b> <span style="text-transform:capitalize;">${r.severity}</span></p>
-            <p><b>Issues Found:</b> ${(r.issues || []).join(", ")}</p>
-            <p><b>Notes:</b> ${r.notes || "—"}</p>
-          </div>
-        `;
-    } else {
-        inspectionContainer.innerHTML = `
-          <div class="inspection-card">
-            <h3>Inspection Findings</h3>
-            <div class="inspection-options">
-              <label><input type="checkbox" value="Brake Issue"> Brake Issue</label>
-              <label><input type="checkbox" value="Engine Vibration"> Engine Vibration</label>
-              <label><input type="checkbox" value="Oil Leakage"> Oil Leakage</label>
-              <label><input type="checkbox" value="Battery Weak"> Battery Weak</label>
-            </div>
-            <select id="inspectionSeverity">
-              <option value="">Select Severity</option>
-              <option value="minor">Minor</option>
-              <option value="medium">Medium</option>
-              <option value="critical">Critical</option>
-            </select>
-            <textarea id="inspectionNotes" placeholder="Write inspection findings..."></textarea>
-            <button class="save-inspection-btn" id="saveInspectionBtn" onclick="saveInspection('${jobId}')" disabled style="opacity:0.5;cursor:not-allowed;">Save Inspection</button>
-            <p id="inspectionHint" class="stage-hint">⚠️ Select at least one issue, severity, and write a note to enable.</p>
-          </div>
-        `;
+      <div class="inspection-card">
 
-        // Wire up live validation to enable/disable the save button
-        const checkInspectionReady = () => {
-          const anyChecked = document.querySelectorAll(".inspection-options input:checked").length > 0;
-          const severityVal = document.getElementById("inspectionSeverity")?.value;
-          const notesVal = document.getElementById("inspectionNotes")?.value.trim();
-          const btn = document.getElementById("saveInspectionBtn");
-          const hint = document.getElementById("inspectionHint");
-          const ready = anyChecked && severityVal && notesVal;
-          if (btn) {
-            btn.disabled = !ready;
-            btn.style.opacity = ready ? "1" : "0.5";
-            btn.style.cursor = ready ? "pointer" : "not-allowed";
-          }
-          if (hint) hint.style.display = ready ? "none" : "block";
-        };
+        <h3>Inspection Findings</h3>
 
-        document.querySelectorAll(".inspection-options input").forEach(cb =>
-          cb.addEventListener("change", checkInspectionReady)
-        );
-        document.getElementById("inspectionSeverity")?.addEventListener("change", checkInspectionReady);
-        document.getElementById("inspectionNotes")?.addEventListener("input", checkInspectionReady);
-    }
+        <div class="inspection-options">
+
+          <label>
+            <input type="checkbox" value="Brake Issue">
+            Brake Issue
+          </label>
+
+          <label>
+            <input type="checkbox" value="Engine Vibration">
+            Engine Vibration
+          </label>
+
+          <label>
+            <input type="checkbox" value="Oil Leakage">
+            Oil Leakage
+          </label>
+
+          <label>
+            <input type="checkbox" value="Battery Weak">
+            Battery Weak
+          </label>
+
+        </div>
+
+        <select id="inspectionSeverity">
+          <option value="">Select Severity</option>
+          <option value="minor">Minor</option>
+          <option value="medium">Medium</option>
+          <option value="critical">Critical</option>
+        </select>
+
+        <textarea
+          id="inspectionNotes"
+          placeholder="Write inspection findings..."
+        ></textarea>
+
+        <button
+          class="save-inspection-btn"
+          id="saveInspectionBtn"
+          onclick="saveInspection('${jobId}')"
+          disabled
+          style="opacity:0.5;cursor:not-allowed;"
+        >
+          Save Inspection
+        </button>
+
+        <p id="inspectionHint" class="stage-hint">
+          ⚠️ Select at least one issue, severity, and write a note to enable.
+        </p>
+
+      </div>
+    `;
+
+    // Wire up live validation to enable/disable the save button
+    const checkInspectionReady = () => {
+      const anyChecked = document.querySelectorAll(".inspection-options input:checked").length > 0;
+      const severityVal = document.getElementById("inspectionSeverity")?.value;
+      const notesVal = document.getElementById("inspectionNotes")?.value.trim();
+      const btn = document.getElementById("saveInspectionBtn");
+      const hint = document.getElementById("inspectionHint");
+      const ready = anyChecked && severityVal && notesVal;
+      if (btn) {
+        btn.disabled = !ready;
+        btn.style.opacity = ready ? "1" : "0.5";
+        btn.style.cursor = ready ? "pointer" : "not-allowed";
+      }
+      if (hint) hint.style.display = ready ? "none" : "block";
+    };
+
+    document.querySelectorAll(".inspection-options input").forEach(cb =>
+      cb.addEventListener("change", checkInspectionReady)
+    );
+    document.getElementById("inspectionSeverity")?.addEventListener("change", checkInspectionReady);
+    document.getElementById("inspectionNotes")?.addEventListener("input", checkInspectionReady);
   }
 
 } else {
@@ -3001,21 +3141,17 @@ window.uploadReInspectionMedia = async function(jobId) {
                 const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
 
                 // Save to Firestore Media Collection
-                const roundSnap = await getDoc(doc(db, "services", serviceId));
-const currentRound = roundSnap.data()?.reInspectionRound || 1;
-
-await addDoc(collection(db, "services", serviceId, "media"), {
-    serviceId: serviceId,
-    jobId: jobId,
-    uploadedBy: currentUser.uid,
-    url: downloadURL,
-    filePath: storageRef.fullPath,
-    fileName: file.name,
-    type: isVideo ? "video" : "photo",
-    stage: "re_inspection",
-    reInspectionRound: currentRound,
-    createdAt: serverTimestamp()
-});
+                await addDoc(collection(db, "services", serviceId, "media"), {
+                    serviceId: serviceId,
+                    jobId: jobId,
+                    uploadedBy: currentUser.uid,
+                    url: downloadURL,
+                    filePath: storageRef.fullPath,
+                    fileName: file.name,
+                    type: isVideo ? "video" : "photo",
+                    stage: "re_inspection",
+                    createdAt: serverTimestamp()
+                });
 
                 // Sync currentStep on both docs so re-inspection stage stays consistent
                 await updateDoc(doc(db, "services", serviceId), {
@@ -3041,7 +3177,106 @@ await addDoc(collection(db, "services", serviceId, "media"), {
     }
 };
 
+// =======================================
+// STAGE 1 HELPERS — Vehicle Received
+// =======================================
+window.vrPreviewImage = function(inputId, previewId, nameId) {
+  const input = document.getElementById(inputId);
+  const preview = document.getElementById(previewId);
+  const placeholder = inputId === 'vrPlateInput' ? document.getElementById('vrPlatePlaceholder') : document.getElementById('vrCarPlaceholder');
+  const nameEl = document.getElementById(nameId);
+  if (!input || !input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    preview.style.display = 'flex';
+    preview.innerHTML = `<img src="${e.target.result}" alt="preview">`;
+    if (placeholder) placeholder.style.display = 'none';
+    if (nameEl) nameEl.textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+};
 
+window.onMediaFileSelected = function() {
+  // no-op placeholder — file gets picked up by uploadMedia
+};
+
+window.markVehicleReceived = async function(jobId) {
+  // Validate both images are selected
+  const plateInput = document.getElementById('vrPlateInput');
+  const carInput   = document.getElementById('vrCarInput');
+
+  if (!plateInput?.files?.[0]) {
+    Swal.fire({ icon:'warning', title:'Number Plate Photo Required', text:'Please upload the vehicle number plate photo.', confirmButtonColor:'#2563eb' });
+    return;
+  }
+  if (!carInput?.files?.[0]) {
+    Swal.fire({ icon:'warning', title:'Car Bay Photo Required', text:'Please upload the full car photo at the service bay.', confirmButtonColor:'#2563eb' });
+    return;
+  }
+  if (await guardCancelPending(jobId)) return;
+
+  const btn = document.getElementById('vrMarkReceivedBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...'; }
+
+  try {
+    const jobRef  = doc(db, "jobCards", jobId);
+    const jobSnap = await getDoc(jobRef);
+    if (!jobSnap.exists()) return;
+    const jobData2   = jobSnap.data();
+    const serviceId = jobData2.serviceId;
+    const assignedServiceCenterId = jobData2.assignedServiceCenterId;
+
+    const metadata = { customMetadata: { ownerId: currentUser.uid, assignedServiceCenterId } };
+    const uploadFile = async (file, label) => {
+      const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
+      const storageRef = ref(storage, `services/${serviceId}/vehicle_received/${label}_${Date.now()}.${ext}`);
+      const task = uploadBytesResumable(storageRef, file, metadata);
+      return new Promise((res, rej) => {
+        task.on('state_changed', null, rej, async () => {
+          const url = await getDownloadURL(task.snapshot.ref);
+          await addDoc(collection(db, 'services', serviceId, 'media'), {
+            serviceId, jobId,
+            uploadedBy: currentUser.uid,
+            url,
+            filePath: storageRef.fullPath,
+            fileName: file.name,
+            type: 'photo',
+            label,
+            stage: 'vehicle_received',
+            createdAt: serverTimestamp()
+          });
+          res(url);
+        });
+      });
+    };
+
+    await uploadFile(plateInput.files[0], 'vehicle_received_number_plate');
+    await uploadFile(carInput.files[0],   'vehicle_received_full_car');
+
+    // Advance stage
+    await updateDoc(doc(db, 'services', serviceId), {
+      currentStep: 'service_started',
+      updatedAt: serverTimestamp(),
+      history: arrayUnion({ action: 'stage_advanced', from: 'vehicle_received', to: 'service_started', by: currentUser.uid, role: 'mechanic', at: new Date() })
+    });
+    await updateDoc(jobRef, {
+      progress: 'service_started',
+      'liveTracking.currentStage': 'Service Started',
+      'liveTracking.currentStageIndex': 1,
+      stageSummary: { totalStages: 6, completedStages: 1, currentStage: 'Service Started', progressPercent: 16 },
+      updatedAt: serverTimestamp()
+    });
+
+    Swal.fire({ icon:'success', title:'Vehicle Received!', text:'Photos uploaded and stage advanced successfully.', confirmButtonColor:'#2563eb', timer:2000, showConfirmButton:false });
+    setTimeout(() => loadActiveService(jobId), 2100);
+
+  } catch (err) {
+    console.error('Vehicle received upload failed:', err);
+    Swal.fire({ icon:'error', title:'Upload Failed', text: err.message });
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Mark Vehicle Received'; }
+  }
+};
 
 // =======================================
 // MEDIA MODAL (ZOOM) LOGIC
@@ -3112,8 +3347,8 @@ window.deleteReInspMedia = async function(serviceId, mediaId, filePath, jobId) {
 //media count
 window.validateRsSubmit = function() {
     // Count by data-type attribute to correctly separate photos from videos
-    const photoCount = document.querySelectorAll('.rs-thumb-item[data-type="photo"][data-current-round="true"]').length;
-const videoCount = document.querySelectorAll('.rs-thumb-item[data-type="video"][data-current-round="true"]').length;
+    const photoCount = document.querySelectorAll('.rs-thumb-item[data-type="photo"]').length;
+    const videoCount = document.querySelectorAll('.rs-thumb-item[data-type="video"]').length;
     
     // Check box status
     const check1 = document.getElementById('rsCheck1')?.checked;

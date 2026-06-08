@@ -17,6 +17,11 @@ import {
 
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 
+import {
+  getFunctions,
+  httpsCallable
+} from "https://www.gstatic.com/firebasejs/12.8.0/firebase-functions.js";
+
 // 🔹 GET serviceId from URL
 const params = new URLSearchParams(window.location.search);
 const serviceId = params.get("serviceId");
@@ -370,186 +375,186 @@ if(!selectedServiceType){
   
 
   try {
-   
-
     //transaction to ensure atomicity
     await runTransaction(db, async (transaction) => {
+      // 🔹 refs
+      const serviceRef = doc(db, "services", serviceId);
+      const jobRef = doc(collection(db, "jobCards")); // auto id
+      const jobId = jobRef.id;
 
-  // 🔹 refs
-  const serviceRef = doc(db, "services", serviceId);
-  const jobRef = doc(collection(db, "jobCards")); // auto id
-  const jobId = jobRef.id;
+      // 🔹 get latest service inside transaction
+      const serviceSnap = await transaction.get(serviceRef);
 
-  // 🔹 get latest service inside transaction
-  const serviceSnap = await transaction.get(serviceRef);
+      if (!serviceSnap.exists()) {
+        throw new Error("Service not found");
+      }
 
-  if (!serviceSnap.exists()) {
-    throw new Error("Service not found");
-  }
+      const service = serviceSnap.data();
 
-  const service = serviceSnap.data();
+      // 🔥 prevent duplicate assignment (IMPORTANT)
+      if (service.serviceStatus === "job_assigned") {
+        throw new Error("Job already assigned");
+      }
 
-  // 🔥 prevent duplicate assignment (IMPORTANT)
-  if (service.serviceStatus === "job_assigned") {
-    throw new Error("Job already assigned");
-  }
+      // 🔹 CREATE jobCard
+      transaction.set(jobRef, {
+        // ===== BASIC JOB INFO =====
+        jobId: jobRef.id,
+        serviceId,
+        carId: service.carId || "",
+        carNumber: service.carSnapshot?.carNumber || service.carId || "",
+        ownerId: service.ownerId,
+        mechanicId,
+        assignedServiceCenterId: currentUser.uid,
 
-  // 🔹 CREATE jobCard
-transaction.set(jobRef, {
-  // ===== BASIC JOB INFO =====
-  jobId: jobRef.id,
-  serviceId,
-  carId: service.carId || "",
-   carNumber: service.carSnapshot?.carNumber || service.carId || "",
-  ownerId: service.ownerId,
-  mechanicId,
-  assignedServiceCenterId: currentUser.uid,
+        status: "assigned",
+        priority: "normal",
 
-  status: "assigned",
-  priority: "normal",
+        selectedServiceType: service.selectedServiceType || "",
+        notes: service.notes || "",
 
-  selectedServiceType: service.selectedServiceType || "",
-  notes: service.notes || "",
+        createdAt: serverTimestamp(),
+        assignedAt: serverTimestamp(),
+        acceptedAt: null,
+        startedAt: null,
+        completedAt: null,
+        updatedAt: serverTimestamp(),
 
-  createdAt: serverTimestamp(),
-  assignedAt: serverTimestamp(),
-  acceptedAt: null,
-  startedAt: null,
-  completedAt: null,
-  updatedAt: serverTimestamp(),
+        // ===== CUSTOMER SNAPSHOT (LIMITED - PRIVACY SAFE) =====
+        customerSnapshot: {
+          name: service.ownerSnapshot?.name || "",
+          phone: service.ownerSnapshot?.phone || "",      // needed for service coordination
+          city: service.ownerSnapshot?.city || "",
+          state: service.ownerSnapshot?.state || "",
+          profileImage: service.ownerSnapshot?.profileImage || ""
+        },
 
-  // ===== CUSTOMER SNAPSHOT (LIMITED - PRIVACY SAFE) =====
-  customerSnapshot: {
-    name: service.ownerSnapshot?.name || "",
-    phone: service.ownerSnapshot?.phone || "",      // needed for service coordination
-    city: service.ownerSnapshot?.city || "",
-    state: service.ownerSnapshot?.state || "",
-    profileImage: service.ownerSnapshot?.profileImage || ""
-    // NO email
-    // NO internal IDs
-    // NO extra personal info
-  },
+        // ===== CAR SNAPSHOT =====
+        carSnapshot: {
+          carNumber: service.carSnapshot?.carNumber || "",
+          brand: service.carSnapshot?.brand || "",
+          model: service.carSnapshot?.model || "",
+          variant: service.carSnapshot?.variant || "",
+          year: service.carSnapshot?.year || "",
+          colour: service.carSnapshot?.colour || "",
+          fuelType: service.carSnapshot?.fuelType || "",
+          transmission: service.carSnapshot?.transmission || "",
+          mileage: service.carSnapshot?.mileage || "",
+          imageUrl: service.carSnapshot?.imageUrl || ""
+        },
 
-  // ===== CAR SNAPSHOT =====
-  carSnapshot: {
-    carNumber: service.carSnapshot?.carNumber || "",
-    brand: service.carSnapshot?.brand || "",
-    model: service.carSnapshot?.model || "",
-    variant: service.carSnapshot?.variant || "",
-    year: service.carSnapshot?.year || "",
-    colour: service.carSnapshot?.colour || "",
-    fuelType: service.carSnapshot?.fuelType || "",
-    transmission: service.carSnapshot?.transmission || "",
-    mileage: service.carSnapshot?.mileage || "",
-    imageUrl: service.carSnapshot?.imageUrl || ""
-  },
+        // ===== SERVICE SNAPSHOT =====
+        serviceSnapshot: {
+          serviceType: service.selectedServiceType || "",
+          issueDescription: service.notes || "",
+          requestedDate: service.requestedAt || null,
+          scheduledDate: service.scheduledDate || "",
+          scheduledTime: service.scheduledTime || ""
+        },
 
-  // ===== SERVICE SNAPSHOT =====
-  serviceSnapshot: {
-    serviceType: service.selectedServiceType || "",
-    issueDescription: service.notes || "",
-    requestedDate: service.requestedAt || null,
-    scheduledDate: service.scheduledDate || "",
-    scheduledTime: service.scheduledTime || ""
-  },
+        // ===== SERVICE CENTER SNAPSHOT =====
+        serviceCenterSnapshot: {
+          name: service.serviceCenterSnapshot?.serviceCenterName ||
+                service.serviceCenterSnapshot?.name || "",
+          phone: service.serviceCenterSnapshot?.phone || "",
+          address: service.serviceCenterSnapshot?.address || "",
+          city: service.serviceCenterSnapshot?.city || "",
+          state: service.serviceCenterSnapshot?.state || "",
+          profileImage: service.serviceCenterSnapshot?.profileImage || ""
+        },
 
-  // ===== SERVICE CENTER SNAPSHOT =====
-  serviceCenterSnapshot: {
-    name: service.serviceCenterSnapshot?.serviceCenterName ||
-          service.serviceCenterSnapshot?.name || "",
+        // ===== STAGE SUMMARY =====
+        stageSummary: {
+          totalStages: 7,
+          completedStages: 0,
+          currentStage: "Vehicle Received",
+          progressPercent: 0
+        },
 
-    phone: service.serviceCenterSnapshot?.phone || "",
-    address: service.serviceCenterSnapshot?.address || "",
-    city: service.serviceCenterSnapshot?.city || "",
-    state: service.serviceCenterSnapshot?.state || "",
-    profileImage: service.serviceCenterSnapshot?.profileImage || ""
-  },
+        // ===== MEDIA SUMMARY =====
+        mediaSummary: {
+          photoCount: 0,
+          videoCount: 0,
+          lastUploadAt: null
+        },
 
-  // ===== STAGE SUMMARY =====
-  stageSummary: {
-    totalStages: 7,
-    completedStages: 0,
-    currentStage: "Vehicle Received",
-    progressPercent: 0
-  },
+        // ===== LIVE TRACKING =====
+        liveTracking: {
+          enabled: false,
+          startedAt: null,
+          startedBy: null,
+          currentStage: "Vehicle Received",
+          currentStageIndex: 0
+        },
 
-  // ===== MEDIA SUMMARY =====
-  mediaSummary: {
-    photoCount: 0,
-    videoCount: 0,
-    lastUploadAt: null
-  },
+        // ===== FEEDBACK =====
+        feedback: {
+          rating: null,
+          review: "",
+          reviewedAt: null
+        }
+      });
 
-  // ===== LIVE TRACKING =====
-  liveTracking: {
-    enabled: false,
-    startedAt: null,
-    startedBy: null,
-    currentStage: "Vehicle Received",
-    currentStageIndex: 0
-  },
+      // 🔹 UPDATE service
+      transaction.update(serviceRef, {
+        serviceStatus: "job_assigned",
+        assignedServiceCenterId: currentUser.uid,
+        serviceCenterAssignedAt: serverTimestamp(),
+        mechanicAssignedAt: serverTimestamp(),
+        mechanicId: mechanicId,
+        selectedServiceType,
 
-  // ===== FEEDBACK =====
-  feedback: {
-    rating: null,
-    review: "",
-    reviewedAt: null
-  }
-});
-  // 🔹 UPDATE service
- transaction.update(serviceRef, {
-  serviceStatus: "job_assigned",
-  assignedServiceCenterId: currentUser.uid,
-  serviceCenterAssignedAt: serverTimestamp(),
-  mechanicAssignedAt: serverTimestamp(),
-  mechanicId: mechanicId,
-  selectedServiceType,
+        //history
+        history: arrayUnion({
+          action: "mechanic_assigned",
+          message: `Job assigned to mechanic`,
+          mechanicId,
+          mechanicName: selectedMechanicData?.name || "",
+          by: currentUser.uid,
+          at: new Date(),
+          serviceType: selectedServiceType
+        }),
+        jobCardId: jobId, 
+      });
+      
+      // We attach the fetched service data and jobId to the window so the email function can use it below
+      window.tempServiceDataForEmail = service;
+      window.tempJobIdForEmail = jobId;
 
-  //history
+    }); // <-- Transaction ends here
 
-  history: arrayUnion({
+    // =========================================================
+    // 🔥 NEW: TRIGGER EMAIL NOTIFICATION AFTER TRANSACTION
+    // =========================================================
+    try {
+        const functions = getFunctions(undefined, "asia-south1"); 
+        const notifyMechanic = httpsCallable(functions, 'notifyMechanicAssignment');
+        
+        await notifyMechanic({
+            mechanicId: mechanicId,
+            jobId: window.tempJobIdForEmail,
+            carNumber: window.tempServiceDataForEmail?.carSnapshot?.carNumber || "Unknown Vehicle",
+            serviceType: selectedServiceType,
+            date: window.tempServiceDataForEmail?.scheduledDate || "N/A",
+            time: window.tempServiceDataForEmail?.scheduledTime || "N/A"
+        });
+        console.log("Mechanic email notification triggered successfully.");
+    } catch (emailError) {
+        console.error("Failed to trigger mechanic notification email:", emailError);
+        // We do not throw the error here so the UI still redirects even if email fails
+    }
+    // =========================================================
 
-  type: "mechanic_assigned",
-
-  message:
-    `Job assigned to mechanic`,
-
-  mechanicId,
-
-  mechanicName:
-    selectedMechanicData?.name || "",
-
-  assignedBy:
-    currentUser.uid,
-
-  assignedAt:
-    new Date(),
-
-  serviceType:
-    selectedServiceType
-
-}),
-
-  jobCardId: jobId, 
-
-});
-
-});
     alert("Mechanic assigned successfully");
     // 3️⃣ REDIRECT
     window.location.replace(`manage-services.html?serviceId=${serviceId}`);
 
   } catch (error) {
-
-  console.error("Transaction failed:", error);
-
-  alert(error.message || "Failed to start service");
-
-} finally {
-
+    console.error("Transaction failed:", error);
+    alert(error.message || "Failed to start service");
+  } finally {
     isSubmitting = false;
-     assignBtn.disabled = false;           
-  assignBtn.innerText = "Assign Selected Mechanic"; 
+    assignBtn.disabled = false;           
+    assignBtn.innerText = "Assign Selected Mechanic"; 
   }
-
 });

@@ -44,13 +44,17 @@ const nodemailer = require("nodemailer");
 const { onCall } = require("firebase-functions/v2/https");
 admin.initializeApp();
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.GMAIL_EMAIL,
-    pass: process.env.GMAIL_PASSWORD
-  }
-});
+// Helper: creates transporter at call-time so secrets are injected
+function createTransporter() {
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.GMAIL_EMAIL,
+      pass: process.env.GMAIL_PASSWORD
+    }
+  });
+}
+
 
 const {
   onDocumentCreated,
@@ -250,7 +254,7 @@ console.log("EMAIL USED:", process.env.GMAIL_EMAIL);
 console.log("PASSWORD EXISTS:", !!process.env.GMAIL_PASSWORD);
 
 // 5️⃣ SEND EMAIL
-await transporter.sendMail({
+await createTransporter().sendMail({
   from: `"Car Service App" <autocare247.app@gmail.com>`,
   to: email,
   subject: "You have been added as a Mechanic",
@@ -287,7 +291,7 @@ exports.sendPasswordChangedEmail = onCall(
       request.auth.uid
     );
 
-    await transporter.sendMail({
+    await createTransporter().sendMail({
 
       from:
       `"AutoCare247 Security" <autocare247.app@gmail.com>`,
@@ -364,7 +368,7 @@ exports.sendVerificationEmail = onCall(
       user.email
     );
 
-    await transporter.sendMail({
+    await createTransporter().sendMail({
 
       from:
       `"AutoCare247" <autocare247.app@gmail.com>`,
@@ -419,7 +423,7 @@ exports.sendEmailVerifiedSuccessEmail = onCall(
       throw new Error("Email not verified yet");
     }
 
-    await transporter.sendMail({
+    await createTransporter().sendMail({
 
       from:
       `"AutoCare247 Security" <autocare247.app@gmail.com>`,
@@ -553,3 +557,379 @@ exports.rejectCancelRequest = onCall(async (request) => {
 
   return { success: true };
 });
+
+// ✅ Admin rejects mechanic work — sends back to re-inspection
+exports.rejectWork = onCall(async (request) => {
+  if (!request.auth) throw new Error("Unauthorized");
+
+  const { serviceId, jobId, rejectionNote } = request.data;
+
+  // Get current job data to read rejection count
+  const jobRef = db.doc(`jobCards/${jobId}`);
+  const jobSnap = await jobRef.get();
+  const currentRejectionCount = (jobSnap.data()?.rejectionCount || 0) + 1;
+
+  const currentRound = (jobSnap.data()?.reInspectionRound || 0) + 1;
+
+await db.doc(`services/${serviceId}`).update({
+    serviceStatus: "in_progress",
+    currentStep: "re_inspection",
+    reInspectionPhotoUploaded: false,
+    reInspectionRound: currentRound,
+    rejectionHistory: admin.firestore.FieldValue.arrayUnion({
+      reason: rejectionNote || "",
+      rejectedBy: request.auth.uid,
+      rejectedAt: new Date()
+    }),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    history: admin.firestore.FieldValue.arrayUnion({
+      action: "work_rejected",
+      reason: rejectionNote,
+      by: request.auth.uid,
+      at: new Date()
+    })
+  });
+
+  await jobRef.update({
+    status: "in_progress",
+    progress: "re_inspection",
+    reInspectionRound: currentRound,   //**
+    lastRejectionTime: admin.firestore.FieldValue.serverTimestamp(),
+    rejectionCount: currentRejectionCount,
+    lastRejectionReason: rejectionNote || "",
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    history: admin.firestore.FieldValue.arrayUnion({
+      action: "work_rejected",
+      reason: rejectionNote,
+      by: request.auth.uid,
+      at: new Date()
+    })
+  });
+
+  return { success: true };
+});
+
+// ─── Shared helper to build job/email detail strings ─────────────────────────
+async function buildJobDetails(jobId) {
+  const jobRef = db.doc(`jobCards/${jobId}`);
+  const jobSnap = await jobRef.get();
+  if (!jobSnap.exists) throw new Error("Job not found");
+  const jobData = jobSnap.data();
+  const serviceId = jobData.serviceId;
+
+  const serviceSnap = await db.doc(`services/${serviceId}`).get();
+  const serviceData = serviceSnap.exists ? serviceSnap.data() : {};
+
+  const car = jobData.carSnapshot || {};
+  const carInfo = car.brand ? `${car.brand} ${car.model} (${car.carNumber})` : "the vehicle";
+  const serviceType   = jobData.serviceType || jobData.reason || serviceData.selectedServiceType || "General Service";
+  const serviceCenter = jobData.serviceCenterSnapshot?.name || serviceData.serviceCenterSnapshot?.name || "our service center";
+  const serviceLoc    = jobData.serviceCenterSnapshot?.location || serviceData.serviceCenterSnapshot?.city || "";
+  const servicePhone  = jobData.serviceCenterSnapshot?.phone || "";
+  const startedAt = jobData.createdAt?.toDate
+    ? jobData.createdAt.toDate().toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })
+    : "—";
+
+  // Derive approvedAt: prefer top-level field, fallback to history entry
+  let approvedAtFromDoc = null;
+  if (jobData.approvedAt?.toDate) approvedAtFromDoc = jobData.approvedAt.toDate();
+  else if (serviceData.approvedAt?.toDate) approvedAtFromDoc = serviceData.approvedAt.toDate();
+  if (!approvedAtFromDoc) {
+    const hit = (serviceData.history || []).find(h => h.action === "work_approved" || h.action === "completion_approved");
+    if (hit?.at?.toDate) approvedAtFromDoc = hit.at.toDate();
+    else if (hit?.at) approvedAtFromDoc = new Date(hit.at);
+  }
+  const approvedAtStr = approvedAtFromDoc
+    ? approvedAtFromDoc.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })
+    : new Date().toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
+
+  return { jobRef, jobData, serviceId, serviceData, carInfo, serviceType, serviceCenter, serviceLoc, servicePhone, startedAt, approvedAtStr };
+}
+
+// ✅ STEP 1: Admin approves work → status: work_done + mechanic email
+exports.approveWork = onCall(
+  { secrets: ["GMAIL_EMAIL", "GMAIL_PASSWORD"] },
+  async (request) => {
+    if (!request.auth) throw new Error("Unauthorized");
+    const { jobId } = request.data;
+    if (!jobId) throw new Error("Missing jobId");
+
+    const { jobRef, jobData, serviceId, serviceData, carInfo, serviceType, serviceCenter, startedAt, approvedAtStr } = await buildJobDetails(jobId);
+
+    if (jobData.status !== "pending_approval") throw new Error("Job is not pending approval");
+
+    const approvedAtTs = admin.firestore.FieldValue.serverTimestamp();
+    const approvedAtDate = new Date();
+
+    // Update jobCard → work_done + write approvedAt
+    await jobRef.update({
+    status: "work_done",
+    approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+    approvedBy: request.auth.uid,
+    history: admin.firestore.FieldValue.arrayUnion({
+      action: "completion_approved",
+      by: request.auth.uid,
+      at: new Date()
+    })
+  });
+
+    // Update service → work_done + write approvedAt to both top-level and history
+    await db.doc(`services/${serviceId}`).update({
+      serviceStatus: "work_done",
+      approvedAt: approvedAtTs,
+      approvedBy: request.auth.uid,
+      updatedAt: approvedAtTs,
+      history: admin.firestore.FieldValue.arrayUnion({
+        action: "work_approved",
+        by: request.auth.uid,
+        at: approvedAtDate
+      })
+    });
+
+    // Send mechanic email
+    try {
+      const mailer = createTransporter();
+      let mechEmail = null;
+      let mechName = serviceData.mechanicName || "Mechanic";
+      if (jobData.mechanicId) {
+        const mechSnap = await db.doc(`users/${jobData.mechanicId}`).get();
+        if (mechSnap.exists && mechSnap.data().email) { mechEmail = mechSnap.data().email; mechName = mechSnap.data().name || mechName; }
+      }
+      if (!mechEmail && serviceData.mechanicSnapshot?.email) mechEmail = serviceData.mechanicSnapshot.email;
+      console.log("approveWork — mechanic email:", mechEmail);
+
+      if (mechEmail) {
+        await mailer.sendMail({
+          from: `"AutoCare247 Admin" <autocare247.app@gmail.com>`,
+          to: mechEmail,
+          subject: `✅ Work Approved — ${carInfo}`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;border:1px solid #e5e7eb;border-radius:10px;">
+              <h2 style="color:#16a34a;">Work Approved! 🎉</h2>
+              <p>Hello ${mechName},</p>
+              <p>Your service work for <strong>${carInfo}</strong> has been reviewed and approved by the admin.</p>
+              <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:12px;">
+                <tr><td style="padding:8px 0;color:#6b7280;width:150px;">Vehicle</td><td style="font-weight:600;">${carInfo}</td></tr>
+                <tr style="background:#f9fafb;"><td style="padding:8px 6px;color:#6b7280;">Service Type</td><td style="font-weight:600;">${serviceType}</td></tr>
+                <tr><td style="padding:8px 0;color:#6b7280;">Service Center</td><td>${serviceCenter}</td></tr>
+                <tr style="background:#f9fafb;"><td style="padding:8px 6px;color:#6b7280;">Started At</td><td>${startedAt}</td></tr>
+                <tr><td style="padding:8px 0;color:#6b7280;">Approved At</td><td>${approvedAtStr}</td></tr>
+                <tr style="background:#f9fafb;"><td style="padding:8px 6px;color:#6b7280;">Status</td><td><span style="background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">Work Done</span></td></tr>
+              </table>
+              <p style="margin-top:16px;color:#374151;">The job has been moved to your completed history. Great work!</p>
+              <p style="color:#9ca3af;font-size:13px;">AutoCare247 Team</p>
+            </div>`
+        });
+        console.log("Mechanic work_done email sent to:", mechEmail);
+      }
+    } catch (emailErr) {
+      console.error("Mechanic email failed:", emailErr);
+    }
+
+    return { success: true };
+  }
+);
+
+// ✅ STEP 2: Admin finalizes → status: completed + customer email
+exports.completeServiceFinal = onCall(
+  { secrets: ["GMAIL_EMAIL", "GMAIL_PASSWORD"] },
+  async (request) => {
+    if (!request.auth) throw new Error("Unauthorized");
+    const { jobId } = request.data;
+    if (!jobId) throw new Error("Missing jobId");
+
+    const { jobRef, jobData, serviceId, serviceData, carInfo, serviceType, serviceCenter, serviceLoc, servicePhone, startedAt, approvedAtStr: completedAtStr } = await buildJobDetails(jobId);
+
+    if (jobData.status !== "work_done") throw new Error("Job must be in work_done state to finalize");
+
+    const completedAtTs = admin.firestore.FieldValue.serverTimestamp();
+    const completedAtDate = new Date();
+
+    // Update jobCard → completed + write completedAt
+    await jobRef.update({
+      status: "completed",
+      progress: "service_complete",
+      completedAt: completedAtTs,
+      updatedAt: completedAtTs
+    });
+
+    // Update service → completed + write completedAt to both top-level and history
+    await db.doc(`services/${serviceId}`).update({
+      serviceStatus: "completed",
+      currentStep: "service_complete",
+      completedAt: completedAtTs,
+      updatedAt: completedAtTs,
+      history: admin.firestore.FieldValue.arrayUnion({
+        action: "completion_approved",
+        by: request.auth.uid,
+        at: completedAtDate
+      })
+    });
+
+    // Send customer email
+    try {
+      const mailer = createTransporter();
+      let custEmail = null;
+      let custName = "Customer";
+      if (jobData.ownerId) {
+        const custSnap = await db.doc(`users/${jobData.ownerId}`).get();
+        if (custSnap.exists && custSnap.data().email) { custEmail = custSnap.data().email; custName = custSnap.data().name || custName; }
+      }
+      if (!custEmail && serviceData.ownerSnapshot?.email) { custEmail = serviceData.ownerSnapshot.email; custName = serviceData.ownerSnapshot.name || custName; }
+      console.log("completeServiceFinal — customer email:", custEmail);
+
+      if (custEmail) {
+        await mailer.sendMail({
+          from: `"AutoCare247" <autocare247.app@gmail.com>`,
+          to: custEmail,
+          subject: `🚗 Your Vehicle Service is Complete — ${carInfo}`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;border:1px solid #e5e7eb;border-radius:10px;">
+              <h2 style="color:#16a34a;">Service Completed! ✅</h2>
+              <p>Hello ${custName},</p>
+              <p>Your vehicle <strong>${carInfo}</strong> has been fully serviced and quality-checked.</p>
+              <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:12px;">
+                <tr><td style="padding:8px 0;color:#6b7280;width:150px;">Vehicle</td><td style="font-weight:600;">${carInfo}</td></tr>
+                <tr style="background:#f9fafb;"><td style="padding:8px 6px;color:#6b7280;">Service Type</td><td style="font-weight:600;">${serviceType}</td></tr>
+                <tr><td style="padding:8px 0;color:#6b7280;">Service Center</td><td>${serviceCenter}${serviceLoc ? ` — ${serviceLoc}` : ""}</td></tr>
+                ${servicePhone ? `<tr style="background:#f9fafb;"><td style="padding:8px 6px;color:#6b7280;">Contact</td><td>${servicePhone}</td></tr>` : ""}
+                <tr><td style="padding:8px 0;color:#6b7280;">Service Started</td><td>${startedAt}</td></tr>
+                <tr style="background:#f9fafb;"><td style="padding:8px 6px;color:#6b7280;">Completed At</td><td>${completedAtStr}</td></tr>
+                <tr><td style="padding:8px 0;color:#6b7280;">Status</td><td><span style="background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">Completed</span></td></tr>
+              </table>
+              <p style="margin-top:16px;color:#374151;">Your vehicle is ready for pickup. Contact the service center to arrange delivery if needed.</p>
+              <p style="color:#374151;">Thank you for choosing <strong>AutoCare247</strong>! 🙏</p>
+              <p style="color:#9ca3af;font-size:13px;">AutoCare247 Customer Support</p>
+            </div>`
+        });
+        console.log("Customer completed email sent to:", custEmail);
+      }
+    } catch (emailErr) {
+      console.error("Customer email failed:", emailErr);
+    }
+
+    return { success: true };
+  }
+);
+
+// ✅ kept for backward compatibility — now just an alias for approveWork
+exports.approveServiceCompletion = onCall(
+  { secrets: ["GMAIL_EMAIL", "GMAIL_PASSWORD"] },
+  async (request) => {
+    if (!request.auth) throw new Error("Unauthorized");
+    const { jobId } = request.data;
+    if (!jobId) throw new Error("Missing jobId");
+    const { jobRef, jobData, serviceId, serviceData, carInfo, serviceType, serviceCenter, startedAt } = await buildJobDetails(jobId);
+    if (!["pending_approval", "work_done"].includes(jobData.status)) throw new Error("Invalid job state");
+
+    const approvedAt = new Date();
+    const approvedAtStr = approvedAt.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
+
+    // Just return success — kept for backward compat; use approveWork + completeServiceFinal instead
+    return { success: true, message: "Use approveWork and completeServiceFinal instead." };
+  }
+);
+
+// ============================================================================
+// NOTIFY MECHANIC ON JOB ASSIGNMENT
+// ============================================================================
+exports.notifyMechanicAssignment = onCall(
+  { secrets: ["GMAIL_EMAIL", "GMAIL_PASSWORD"] },
+  async (request) => {
+    // 1. Verify Authentication
+    if (!request.auth) {
+      throw new Error("Unauthorized");
+    }
+
+    const { mechanicId, jobId, carNumber, serviceType, date, time } = request.data;
+    
+    if (!mechanicId || !jobId) {
+      throw new Error("Missing required assignment data");
+    }
+
+    try {
+      // 2. Fetch the Mechanic's Profile to get their Email
+      const mechanicSnap = await admin.firestore().collection("users").doc(mechanicId).get();
+      if (!mechanicSnap.exists) {
+        throw new Error("Mechanic profile not found");
+      }
+
+      const mechanicData = mechanicSnap.data();
+      const mechanicEmail = mechanicData.email;
+      const mechanicName = mechanicData.name || "Mechanic";
+
+      if (!mechanicEmail) {
+        console.log(`No email found for mechanic ID: ${mechanicId}. Skipping email notification.`);
+        return { success: false, reason: "Mechanic has no email address." };
+      }
+
+      // 3. Configure Nodemailer
+      const nodemailer = require("nodemailer");
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.GMAIL_EMAIL,
+          pass: process.env.GMAIL_PASSWORD,
+        },
+      });
+
+      // 4. Build the HTML Email Template
+      const mailOptions = {
+        from: `"AutoCare247" <${process.env.GMAIL_EMAIL}>`,
+        to: mechanicEmail,
+        subject: `🔧 New Job Assigned: ${carNumber} (${serviceType})`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <div style="background-color: #2563eb; padding: 24px; text-align: center;">
+              <h2 style="margin: 0; color: #ffffff; font-size: 24px;">New Job Assigned</h2>
+            </div>
+            
+            <div style="padding: 32px; color: #334155; background-color: #ffffff;">
+              <p style="font-size: 16px; margin-top: 0;">Hello <strong>${mechanicName}</strong>,</p>
+              <p style="font-size: 15px; line-height: 1.5;">You have been assigned a new service job by the service center. Please check your dashboard for full vehicle details and customer notes.</p>
+              
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; margin: 24px 0;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 6px 0; color: #64748b; font-size: 14px; width: 40%;"><strong>Job ID:</strong></td>
+                    <td style="padding: 6px 0; color: #0f172a; font-size: 14px; font-weight: 600;">${jobId}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #64748b; font-size: 14px;"><strong>Vehicle:</strong></td>
+                    <td style="padding: 6px 0; color: #0f172a; font-size: 14px; font-weight: 600;">${carNumber}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #64748b; font-size: 14px;"><strong>Service Type:</strong></td>
+                    <td style="padding: 6px 0; color: #0f172a; font-size: 14px; font-weight: 600;">${serviceType}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #64748b; font-size: 14px;"><strong>Scheduled:</strong></td>
+                    <td style="padding: 6px 0; color: #0f172a; font-size: 14px; font-weight: 600;">${date} at ${time || "Anytime"}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <div style="text-align: center; margin-top: 32px;">
+                <a href="https://yourdomain.com/mechanic-dashboard.html" style="background-color: #2563eb; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; display: inline-block;">Open Mechanic Panel</a>
+              </div>
+            </div>
+            
+            <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+              &copy; ${new Date().getFullYear()} AutoCare247. All rights reserved.
+            </div>
+          </div>
+        `
+      };
+
+      // 5. Send the Email
+      await transporter.sendMail(mailOptions);
+      console.log(`Assignment notification email successfully sent to ${mechanicEmail}`);
+      
+      return { success: true };
+
+    } catch (error) {
+      console.error("Failed to process mechanic assignment email:", error);
+      throw new Error("Internal error while sending notification");
+    }
+  }
+);

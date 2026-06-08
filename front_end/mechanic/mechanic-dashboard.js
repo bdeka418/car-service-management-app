@@ -197,11 +197,11 @@ const serviceId = jobSnap.data().serviceId;
 try {
   await updateDoc(doc(db, "services", serviceId), {
    history: arrayUnion({
-  type: "job_accepted",
+  action: "job_accepted", // FIX: Standardized to 'action'
   message: "Mechanic accepted the job",
   by: currentUser.uid,
   role: "mechanic",
-  timestamp: new Date(),
+  at: new Date(), // FIX: Changed 'timestamp' to 'at'
   jobId: jobId
 })
   });
@@ -239,6 +239,19 @@ menuToggle.addEventListener("click", () => {
 // START WORK FUNCTION
 window.openMediaFlow = async function(jobId) {
   try {
+    // 🛑 1. CHECK FOR EXISTING ACTIVE JOBS FIRST 🛑
+    const activeCheckQuery = query(
+      collection(db, "jobCards"),
+      where("mechanicId", "==", currentUser.uid),
+      where("status", "in", ["in_progress", "pending_approval", "re_inspection"])
+    );
+    const activeCheckSnap = await getDocs(activeCheckQuery);
+    
+    if (!activeCheckSnap.empty) {
+        alert("⚠️ You already have an active job in progress! Please complete your current vehicle or wait for admin approval before starting a new one.");
+        return; // Stop them from starting another job
+    }
+
     const jobRef = doc(db, "jobCards", jobId);
 
     // 1️⃣ get job first
@@ -261,11 +274,11 @@ window.openMediaFlow = async function(jobId) {
       updatedAt: serverTimestamp(),
 
       history: arrayUnion({
-        type: "job_started",
+        action: "job_started", // FIX: Standardized to 'action'
         message: "Mechanic started working on the vehicle",
         by: currentUser.uid,
         role: "mechanic",
-        timestamp: new Date(),
+        at: new Date(), // FIX: Changed 'timestamp' to 'at'
         jobId: jobId
       })
     });
