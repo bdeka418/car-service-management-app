@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Bay Camera - Admin</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://unpkg.com/@daily-co/daily-js"></script>
+  <style>
+    body { margin: 0; padding: 0; font-family: Inter, sans-serif; background-color: #0f172a; color: white; display: flex; flex-direction: column; height: 100vh; }
+    .live-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background-color: #1e293b; border-bottom: 1px solid #334155; }
+    .live-header h2 { margin: 0; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+    .live-indicator { width: 12px; height: 12px; background-color: #ef4444; border-radius: 50%; box-shadow: 0 0 10px #ef4444; animation: blink 1.5s infinite; }
+    .back-btn { background: #334155; color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .back-btn:hover { background: #475569; }
+    #adminVideoContainer { flex: 1; width: 100%; background-color: #000; }
+    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+  </style>
+</head>
+<body>
+  <header class="live-header">
+    <h2>
+      <div class="live-indicator"></div> 
+      Service Bay Live Feed <span id="vehicleName" style="color: #94a3b8; font-weight: 400; margin-left: 10px;"></span>
+    </h2>
+    <button class="back-btn" id="closeLiveBtn">
+      <i class="fa-solid fa-arrow-left"></i> Back to Monitor
+    </button>
+  </header>
+  <div id="adminVideoContainer"></div>
+  <script type="module" src="admin-live.js"></script>
+</body>
+</html>

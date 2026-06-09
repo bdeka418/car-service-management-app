@@ -138,6 +138,34 @@ function renderOverview() {
         document.getElementById("topCancelReason").textContent    = s.cancelReason || "No reason provided";
         document.getElementById("topCancelTime").textContent      = reqTime;
     }
+
+// --- admin live viewer ---
+  
+   const watchLiveBtn = document.getElementById("watchLiveBtn");
+    if (watchLiveBtn) {
+        if (s.liveEnabled) {
+            watchLiveBtn.style.display = "flex"; // Master is ON, show the UI
+            
+            // Allow entry ONLY if the camera broadcast is actively running
+            if (s.cameraActive) {
+                watchLiveBtn.style.backgroundColor = "#ef4444";
+                watchLiveBtn.style.cursor = "pointer";
+                watchLiveBtn.style.opacity = "1";
+                watchLiveBtn.innerHTML = `<i class="fa-solid fa-video" style="animation: pulse 1.5s infinite;"></i> Watch Live Tracking`;
+                watchLiveBtn.onclick = () => {
+                    window.location.href = `admin-live.html?serviceId=${currentServiceId}`;
+                };
+            } else {
+                watchLiveBtn.style.backgroundColor = "#64748b";
+                watchLiveBtn.style.cursor = "not-allowed";
+                watchLiveBtn.style.opacity = "0.7";
+                watchLiveBtn.innerHTML = `<i class="fa-solid fa-video-slash"></i> Camera Paused by Mechanic`;
+                watchLiveBtn.onclick = null; // Deny entry
+            }
+        } else {
+            watchLiveBtn.style.display = "none"; // Master is OFF, hide the UI completely
+        }
+    }
 }
 
 // 2. Timeline & Activity Feed

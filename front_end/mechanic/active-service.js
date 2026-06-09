@@ -33,6 +33,10 @@ let currentUser = null;
 let serviceTimerInterval = null;
 const storage = getStorage();
 
+const DEMO_ROOM_URL = "https://autocare247.daily.co/bay-1"; 
+let callFrame = null;
+let wakeLock = null;
+
 // =======================================
 // STAGE 1 HELPERS — Vehicle Received
 // =======================================
@@ -456,6 +460,7 @@ async function setupLiveToggle(jobData, serviceData) {
   if (!liveCard) return;
 
   const isLiveOn           = !!serviceData.liveEnabled;
+  const isCameraOn         = !!serviceData.cameraActive; // NEW STATE
   const status             = serviceData.serviceStatus || jobData.status || "";
   const cancelPending      = jobData.cancelRequested === true || serviceData.cancelRequested === true;
   const isPendingApproval  = status === "pending_approval";
@@ -463,58 +468,35 @@ async function setupLiveToggle(jobData, serviceData) {
   const isCompleted        = ["completed", "cancelled"].includes(status);
   const isReInspection     = serviceData.currentStep === "re_inspection";
 
-  // Auto-enable live when re-inspection starts
+  // Auto-enable for re-inspection
   if (isReInspection && !isLiveOn && !isPendingApproval && !isCompleted && !cancelPending) {
     try {
-      await updateDoc(doc(db, "services", jobData.serviceId), {
-        liveEnabled: true, liveStartedAt: serverTimestamp(), liveStartedBy: currentUser.uid
-      });
-      await updateDoc(doc(db, "jobCards", jobId), {
-        "liveTracking.enabled": true, "liveTracking.startedAt": serverTimestamp(), "liveTracking.startedBy": currentUser.uid
-      });
-      loadActiveService(jobId);
-      return;
-    } catch (e) { console.error("Auto-enable live for re-inspection failed:", e); }
+      await updateDoc(doc(db, "services", jobData.serviceId), { liveEnabled: true, liveStartedAt: serverTimestamp(), liveStartedBy: currentUser.uid, cameraActive: false });
+      await updateDoc(doc(db, "jobCards", jobId), { "liveTracking.enabled": true, "liveTracking.startedAt": serverTimestamp(), "liveTracking.startedBy": currentUser.uid, "liveTracking.cameraActive": false });
+      loadActiveService(jobId); return;
+    } catch (e) { console.error(e); }
   }
 
-  // Auto-disable live when cancel pending (if currently on)
+  // Auto-disable if cancel pending
   if (cancelPending && isLiveOn) {
     try {
-      await updateDoc(doc(db, "services", jobData.serviceId), {
-        liveEnabled: false, liveEndedAt: serverTimestamp()
-      });
-      await updateDoc(doc(db, "jobCards", jobId), {
-        "liveTracking.enabled": false, "liveTracking.endedAt": serverTimestamp()
-      });
-      loadActiveService(jobId);
-      return;
-    } catch (e) { console.error("Auto-disable live for cancel-pending failed:", e); }
+      await updateDoc(doc(db, "services", jobData.serviceId), { liveEnabled: false, liveEndedAt: serverTimestamp(), cameraActive: false });
+      await updateDoc(doc(db, "jobCards", jobId), { "liveTracking.enabled": false, "liveTracking.endedAt": serverTimestamp(), "liveTracking.cameraActive": false });
+      if(callFrame) { callFrame.leave(); callFrame.destroy(); callFrame = null; }
+      document.getElementById("mechanicLiveWrapper").style.display = "none";
+      loadActiveService(jobId); return;
+    } catch (e) { console.error(e); }
   }
 
-  // Lock rules:
-  // - Toggleable ONLY before it was ever turned ON (isLiveOn=false, no prior history, no locks)
-  // - Once ON → always locked (auto-managed only)
-  // - Locked in: pending_approval, work_done, completed, cancelled, cancel_pending, re_inspection
   const wasEverOn = isLiveOn || !!serviceData.liveStartedAt;
   const toggleLocked = wasEverOn || isReInspection || isPendingApproval || isWorkDone || isCompleted || cancelPending;
 
-  // Label and sublabel logic
-  let titleText, subText, extraMsg = "";
-  if (cancelPending) {
-    titleText = "🔴 Live Tracking — Disabled";
-    subText = "Live tracking is disabled while your cancellation request is pending.";
-  } else if (isLiveOn) {
-    titleText = "🟢 Live Tracking is ON";
-    subText = "Owner and service center can monitor your work in real-time.";
-    extraMsg = `<p class="live-on-msg">Will turn off automatically when service completes.</p>`;
-  } else if (isPendingApproval || isWorkDone || isCompleted) {
-    titleText = "Live Tracking";
-    subText = "Live tracking is no longer available at this stage.";
-  } else {
-    titleText = "Live Tracking";
-    subText = "Enable so the owner can track your progress live.";
-  }
+  let titleText = "Live Tracking Master", subText = "Enable tracking to unlock the camera broadcast switch.", extraMsg = "";
+  if (cancelPending) { titleText = "🔴 Live Tracking — Disabled"; subText = "Live tracking is disabled while cancellation is pending."; }
+  else if (isLiveOn) { titleText = "🟢 Live Tracking is ON"; subText = "Feature unlocked. You can now toggle your camera on and off as needed."; }
+  else if (isPendingApproval || isWorkDone || isCompleted) { subText = "Live tracking is no longer available at this stage."; }
 
+  // Inject UI
   liveCard.innerHTML = `
     <div class="live-toggle-row">
       <div class="live-toggle-left">
@@ -530,37 +512,117 @@ async function setupLiveToggle(jobData, serviceData) {
         </label>
       </div>
     </div>
+
+    ${isLiveOn && !cancelPending && !isPendingApproval && !isCompleted && !isWorkDone ? `
+    <div class="camera-broadcast-row" style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed #cbd5e1; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <div style="font-size: 15px; font-weight: 700; color: ${isCameraOn ? '#dc2626' : '#0f172a'}; display: flex; align-items: center; gap: 8px;">
+                ${isCameraOn ? '<div style="width: 10px; height: 10px; background: red; border-radius: 50%; animation: pulse 1.5s infinite;"></div>' : '<i class="fa-solid fa-video-slash"></i>'}
+                Camera Broadcast
+            </div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Turn ON ONLY when showing the vehicle to save credits.</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 12px; font-weight: 700; color: ${isCameraOn ? '#dc2626' : '#64748b'};">${isCameraOn ? "BROADCASTING" : "OFF"}</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="cameraToggle" ${isCameraOn ? "checked" : ""}>
+                <span class="toggle-slider" style="${isCameraOn ? 'background: #dc2626;' : ''}"></span>
+            </label>
+        </div>
+    </div>
+    ` : ""}
   `;
 
-  // Only attach change listener if toggle is NOT locked
+  // --- PiP UI Logic ---
+  const wrapper = document.getElementById("mechanicLiveWrapper");
+  const toggleBtn = document.getElementById("toggleSizeBtn");
+  let isMinimized = false;
+
+  const setFullScreen = () => {
+      wrapper.style.position = "fixed"; wrapper.style.inset = "0";
+      wrapper.style.width = "100%"; wrapper.style.height = "100%";
+      wrapper.style.zIndex = "9999"; wrapper.style.borderRadius = "0";
+      if(toggleBtn) toggleBtn.innerHTML = '<i class="fa-solid fa-compress"></i> Minimize';
+      isMinimized = false;
+  };
+  const setPiP = () => {
+      wrapper.style.position = "fixed"; wrapper.style.inset = "auto 20px 20px auto";
+      wrapper.style.width = "130px"; wrapper.style.height = "180px";
+      wrapper.style.zIndex = "9999"; wrapper.style.borderRadius = "12px";
+      wrapper.style.overflow = "hidden";
+      if(toggleBtn) toggleBtn.innerHTML = '<i class="fa-solid fa-expand"></i>';
+      isMinimized = true;
+  };
+  if(toggleBtn) toggleBtn.onclick = () => { isMinimized ? setFullScreen() : setPiP(); };
+
+  // Restore camera state if mechanic refreshes the browser
+  if (isCameraOn && !callFrame && !toggleLocked) {
+      wrapper.style.display = "flex";
+      setFullScreen();
+      callFrame = window.DailyIframe.createFrame(document.getElementById("mechanicVideoContainer"), {
+          iframeStyle: { width: '100%', height: '100%', border: '0' }, showLeaveButton: false, showFullscreenButton: false
+      });
+      callFrame.join({ url: DEMO_ROOM_URL });
+  }
+
+  // --- Master Live Toggle Logic (No longer joins Daily) ---
   if (!toggleLocked) {
     const liveToggle = document.getElementById("liveToggle");
-    liveToggle.addEventListener("change", async () => {
-      const enabled = liveToggle.checked;
-      try {
-        await updateDoc(doc(db, "services", jobData.serviceId), {
-          liveEnabled: enabled,
-          liveStartedAt: enabled ? serverTimestamp() : null,
-          liveStartedBy: enabled ? currentUser.uid : null
-        });
-        await updateDoc(doc(db, "jobCards", jobId), {
-          "liveTracking.enabled": enabled,
-          "liveTracking.startedAt": enabled ? serverTimestamp() : null,
-          "liveTracking.startedBy": enabled ? currentUser.uid : null
-        });
-        // Immediately lock once enabled — no manual toggle back
-        if (enabled) {
-          liveToggle.disabled = true;
-          loadActiveService(jobId);
+    if (liveToggle) {
+      liveToggle.addEventListener("change", async () => {
+        const enabled = liveToggle.checked;
+        try {
+          await updateDoc(doc(db, "services", jobData.serviceId), { liveEnabled: enabled, liveStartedAt: enabled ? serverTimestamp() : null, liveStartedBy: enabled ? currentUser.uid : null, cameraActive: false });
+          await updateDoc(doc(db, "jobCards", jobId), { "liveTracking.enabled": enabled, "liveTracking.startedAt": enabled ? serverTimestamp() : null, "liveTracking.startedBy": enabled ? currentUser.uid : null, "liveTracking.cameraActive": false });
+          if (enabled) { liveToggle.disabled = true; loadActiveService(jobId); }
+        } catch (error) {
+          console.error("Live toggle failed:", error); liveToggle.checked = false; alert("Setup failed.");
         }
-      } catch (error) {
-        console.error("Live toggle failed:", error);
-        liveToggle.checked = !enabled;
-      }
-    });
+      });
+    }
+  }
+
+  // --- NEW Camera Power Logic ---
+  const cameraToggle = document.getElementById("cameraToggle");
+  if (cameraToggle) {
+      cameraToggle.addEventListener("change", async (e) => {
+          const enabled = e.target.checked;
+          try {
+              // 1. UPDATE DATABASE FIRST (Guarantees the switch never gets stuck)
+              await updateDoc(doc(db, "services", jobData.serviceId), { cameraActive: enabled });
+              await updateDoc(doc(db, "jobCards", jobId), { "liveTracking.cameraActive": enabled });
+              
+              // 2. THEN HANDLE CAMERA
+              if (enabled) {
+                  if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {} }
+                  wrapper.style.display = "flex";
+                  setFullScreen();
+                  if (!callFrame) {
+                      callFrame = window.DailyIframe.createFrame(document.getElementById("mechanicVideoContainer"), {
+                          iframeStyle: { width: '100%', height: '100%', border: '0' }, showLeaveButton: false, showFullscreenButton: false
+                      });
+                  }
+                  await callFrame.join({ url: DEMO_ROOM_URL });
+              } else {
+                  if (callFrame) {
+                      await callFrame.leave();
+                      callFrame.destroy();
+                      callFrame = null;
+                  }
+                  wrapper.style.display = "none";
+                  if (wakeLock !== null) { await wakeLock.release(); wakeLock = null; }
+              }
+              
+              loadActiveService(jobId); 
+          } catch (error) {
+              console.error("Camera toggle failed:", error); 
+              // Only revert if the DB fails
+              cameraToggle.checked = !enabled; 
+              alert("Camera error. Please try again.");
+          }
+      });
   }
 }
-
 
 //upload media function
 

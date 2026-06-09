@@ -10,14 +10,20 @@
 <body>
 
     <div class="monitor-container">
-        <div class="page-header">
+       <div class="page-header">
             <div>
                 <h1>Service Monitoring & Approval Center</h1>
                 <p>Monitor mechanic activity, review progress and take action</p>
             </div>
-            <button id="backBtn" class="header-back-btn">
-                <i class="fa-solid fa-arrow-left"></i> Back to Services
-            </button>
+            <div style="display: flex; gap: 12px;">
+                <button id="watchLiveBtn" class="header-back-btn" style="display: none; background: #ef4444; color: white; border: none;">
+                    <i class="fa-solid fa-video" style="animation: pulse 1.5s infinite;"></i> Watch Live Tracking
+                </button>
+                
+                <button id="backBtn" class="header-back-btn">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Services
+                </button>
+            </div>
         </div>
 
         <section class="top-overview-card">
